@@ -53,19 +53,27 @@ export interface Category {
 }
 
 export interface User {
-  id: string; // Changé de number à string
-  firstName: string; // Ajouté pour Header
-  lastName: string;  // Ajouté pour Header
+  id: string;
+  firstName: string;
+  lastName: string;
   email: string;
+  role: 'BUYER' | 'SELLER' | 'ADMIN';
   avatar?: string;
-  isVendor?: boolean;
+  bio?: string;
+  stripeAccountId?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
   // Garde pour compatibilité descendante
+  isVendor?: boolean;
   name?: string;
 }
 
 export interface CartItem {
+  id: string;
   product: Product;
   quantity: number;
+  createdAt: string;
 }
 
 export interface SearchFilters {
@@ -108,6 +116,41 @@ export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   message?: string;
+}
+
+// Types pour les commandes
+export interface Order {
+  id: string;
+  orderNumber: string;
+  totalAmount: string;
+  status: 'PENDING' | 'PAID' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
+  stripePaymentId?: string;
+  paymentMethod?: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  user?: User;
+  items: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  quantity: number;
+  price: string;
+  createdAt: string;
+  product: Product;
+}
+
+// Types pour les avis
+export interface Review {
+  id: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  productId: string;
+  user?: User;
 }
 
 // Types pour les filtres produits

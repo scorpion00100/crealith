@@ -5,6 +5,7 @@ import { searchProducts } from '@/store/slices/productSlice';
 import { logout } from '@/store/slices/authSlice';
 import { toggleCart } from '@/store/slices/cartSlice';
 import { useAppDispatch, useAppSelector } from '@/store';
+import { NotificationCenter } from '@/components/ui/NotificationCenter';
 
 export const Header: React.FC = () => {
     const dispatch = useAppDispatch();
@@ -15,6 +16,7 @@ export const Header: React.FC = () => {
     const { isAuthenticated, user } = useAppSelector(state => state.auth);
     const { totalItems } = useAppSelector(state => state.cart);
     const { searchQuery } = useAppSelector(state => state.ui);
+    const favoritesCount = useAppSelector(state => state.favorites.favorites.length);
 
     // État local
     const [localSearchTerm, setLocalSearchTerm] = useState<string>(searchQuery);
@@ -118,6 +120,17 @@ export const Header: React.FC = () => {
                             <span className="cart-count">{totalItems}</span>
                         )}
                     </button>
+
+                    {/* Favoris */}
+                    <Link to="/favorites" className="favorites-btn">
+                        ❤️
+                        {favoritesCount > 0 && (
+                            <span className="favorites-count">{favoritesCount}</span>
+                        )}
+                    </Link>
+
+                    {/* Notifications */}
+                    <NotificationCenter />
 
                     {/* État d'authentification */}
                     {isAuthenticated ? (

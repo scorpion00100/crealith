@@ -25,6 +25,8 @@ model User {
   orders        Order[]
   reviews       Review[]
   cartItems     CartItem[]
+  favorites     Favorite[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -71,6 +73,7 @@ model Product {
   orderItems      OrderItem[]
   reviews         Review[]
   cartItems       CartItem[]
+  favorites       Favorite[]
 
   @@map("products")
 }
@@ -138,6 +141,36 @@ model Review {
 
   @@unique([userId, productId])
   @@map("reviews")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId    String   @map("user_id")
+  productId String   @map("product_id")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  type        String   // 'success', 'error', 'warning', 'info'
+  title       String
+  message     String
+  read        Boolean  @default(false)
+  actionUrl   String?  @map("action_url")
+  actionLabel String?  @map("action_label")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }
 
 enum UserRole {

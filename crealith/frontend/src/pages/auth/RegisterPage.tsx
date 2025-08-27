@@ -1,66 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import { registerUser, clearError } from '@/store/slices/authSlice';
-import { useAppDispatch, useAppSelector } from '@/store';
-
-interface RegisterFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  accountType: 'buyer' | 'seller';
-  agreeToTerms: boolean;
-  newsletterOptIn: boolean;
-}
+import { useAuth } from '@/hooks/useAuth';
+import { addNotification } from '@/store/slices/uiSlice';
+import { useAppDispatch } from '@/store';
 
 export const RegisterPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { register, isLoading, error, clearError } = useAuth();
 
-  // Sélecteurs Redux
-  const { isLoading, error, isAuthenticated } = useAppSelector(state => state.auth);
-
-  const accountType = searchParams.get('type') as 'buyer' | 'seller' || 'buyer';
-
-  const [formData, setFormData] = useState<RegisterFormData>({
+  const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    accountType: accountType,
+    accountType: 'buyer' as 'buyer' | 'seller',
     agreeToTerms: false,
-    newsletterOptIn: false
+    newsletterOptIn: false,
   });
 
-  const [validationErrors, setValidationErrors] = useState<Partial<RegisterFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Redirection si déjà connecté
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard');
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+
+    // Effacer l'erreur du champ modifié
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
-  }, [isAuthenticated, navigate]);
+  };
 
-  // Nettoyer les erreurs au montage
-  useEffect(() => {
-    return () => {
-      dispatch(clearError());
-    };
-  }, [dispatch]);
-
-  // Afficher les erreurs via toast
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
-  }, [error]);
-
-  const validateForm = (): boolean => {
-    const newErrors: Partial<RegisterFormData> = {};
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
 
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'Le prénom est requis';
@@ -70,18 +47,16 @@ export const RegisterPage: React.FC = () => {
       newErrors.lastName = 'Le nom est requis';
     }
 
-    if (!formData.email) {
+    if (!formData.email.trim()) {
       newErrors.email = 'L\'email est requis';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Format d\'email invalide';
+      newErrors.email = 'L\'email n\'est pas valide';
     }
 
     if (!formData.password) {
       newErrors.password = 'Le mot de passe est requis';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères';
-    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-      newErrors.password = 'Le mot de passe doit contenir une majuscule, une minuscule et un chiffre';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -92,64 +67,36 @@ export const RegisterPage: React.FC = () => {
       newErrors.agreeToTerms = 'Vous devez accepter les conditions d\'utilisation';
     }
 
-    setValidationErrors(newErrors);
+    setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    // Clear validation error when user starts typing
-    if (validationErrors[name as keyof RegisterFormData]) {
-      setValidationErrors(prev => ({
-        ...prev,
-        [name]: undefined
-      }));
-    }
-
-    // Clear Redux error when user modifies form
-    if (error) {
-      dispatch(clearError());
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearError();
 
     if (!validateForm()) {
       return;
     }
 
     try {
-      // Utiliser le thunk Redux
-      const resultAction = await dispatch(registerUser({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        password: formData.password,
-        accountType: formData.accountType,
-        agreeToTerms: formData.agreeToTerms,
-        newsletterOptIn: formData.newsletterOptIn
+      await register(formData);
+
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Compte créé avec succès !',
+        duration: 3000,
       }));
 
-      // Vérifier si l'inscription a réussi
-      if (registerUser.fulfilled.match(resultAction)) {
-        toast.success(
-          formData.accountType === 'seller'
-            ? 'Compte vendeur créé avec succès ! Bienvenue chez Crealith.'
-            : 'Compte créé avec succès ! Bienvenue chez Crealith.'
-        );
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      // L'erreur est gérée par le slice et l'effet useEffect
-      console.error('Erreur d\'inscription:', error);
+      // Rediriger vers la page demandée ou le dashboard
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      navigate(redirectTo);
+    } catch (error: any) {
+      dispatch(addNotification({
+        type: 'error',
+        message: error.message || 'Erreur lors de la création du compte',
+        duration: 4000,
+      }));
     }
   };
 
@@ -157,218 +104,195 @@ export const RegisterPage: React.FC = () => {
     <div className="auth-page">
       <div className="auth-container">
         <div className="auth-card">
-          {/* Header */}
           <div className="auth-header">
-            <Link to="/" className="logo">
-              <div className="logo-icon">C</div>
-              <div className="logo-text">Crealith</div>
-            </Link>
-            <h1>
-              {formData.accountType === 'seller'
-                ? 'Devenir vendeur'
-                : 'Créer un compte'
-              }
-            </h1>
-            <p>
-              {formData.accountType === 'seller'
-                ? 'Rejoignez notre communauté de créateurs'
-                : 'Découvrez des milliers de créations uniques'
-              }
-            </p>
+            <h1>Créer un compte</h1>
+            <p>Rejoignez la communauté Crealith</p>
           </div>
 
-          {/* Account Type Selector */}
-          <div className="account-type-selector">
-            <label className={`type-option ${formData.accountType === 'buyer' ? 'active' : ''}`}>
-              <input
-                type="radio"
-                name="accountType"
-                value="buyer"
-                checked={formData.accountType === 'buyer'}
-                onChange={handleInputChange}
-                disabled={isLoading}
-              />
-              <div className="type-content">
-                <div className="type-icon">🛒</div>
-                <div className="type-text">
-                  <strong>Acheteur</strong>
-                  <span>Acheter des créations</span>
-                </div>
-              </div>
-            </label>
-
-            <label className={`type-option ${formData.accountType === 'seller' ? 'active' : ''}`}>
-              <input
-                type="radio"
-                name="accountType"
-                value="seller"
-                checked={formData.accountType === 'seller'}
-                onChange={handleInputChange}
-                disabled={isLoading}
-              />
-              <div className="type-content">
-                <div className="type-icon">🎨</div>
-                <div className="type-text">
-                  <strong>Vendeur</strong>
-                  <span>Vendre mes créations</span>
-                </div>
-              </div>
-            </label>
-          </div>
-
-          {/* Form */}
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="auth-form">
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="firstName" className="form-label">
-                  Prénom
-                </label>
+                <label htmlFor="firstName">Prénom</label>
                 <input
                   type="text"
                   id="firstName"
                   name="firstName"
-                  className={`form-input ${validationErrors.firstName ? 'error' : ''}`}
-                  placeholder="Jean"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  disabled={isLoading}
                   required
+                  placeholder="Votre prénom"
+                  className={`form-input ${errors.firstName ? 'error' : ''}`}
                 />
-                {validationErrors.firstName && (
-                  <span className="error-message">{validationErrors.firstName}</span>
+                {errors.firstName && (
+                  <span className="field-error">{errors.firstName}</span>
                 )}
               </div>
 
               <div className="form-group">
-                <label htmlFor="lastName" className="form-label">
-                  Nom
-                </label>
+                <label htmlFor="lastName">Nom</label>
                 <input
                   type="text"
                   id="lastName"
                   name="lastName"
-                  className={`form-input ${validationErrors.lastName ? 'error' : ''}`}
-                  placeholder="Dupont"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  disabled={isLoading}
                   required
+                  placeholder="Votre nom"
+                  className={`form-input ${errors.lastName ? 'error' : ''}`}
                 />
-                {validationErrors.lastName && (
-                  <span className="error-message">{validationErrors.lastName}</span>
+                {errors.lastName && (
+                  <span className="field-error">{errors.lastName}</span>
                 )}
               </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                Adresse email
-              </label>
+              <label htmlFor="email">Email</label>
               <input
                 type="email"
                 id="email"
                 name="email"
-                className={`form-input ${validationErrors.email ? 'error' : ''}`}
-                placeholder="votre@email.com"
                 value={formData.email}
                 onChange={handleInputChange}
-                disabled={isLoading}
                 required
+                placeholder="votre@email.com"
+                className={`form-input ${errors.email ? 'error' : ''}`}
               />
-              {validationErrors.email && (
-                <span className="error-message">{validationErrors.email}</span>
+              {errors.email && (
+                <span className="field-error">{errors.email}</span>
               )}
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="password">Mot de passe</label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Votre mot de passe"
+                  className={`form-input ${errors.password ? 'error' : ''}`}
+                />
+                {errors.password && (
+                  <span className="field-error">{errors.password}</span>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="confirmPassword">Confirmer le mot de passe</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="Confirmez votre mot de passe"
+                  className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                />
+                {errors.confirmPassword && (
+                  <span className="field-error">{errors.confirmPassword}</span>
+                )}
+              </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                Mot de passe
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                className={`form-input ${validationErrors.password ? 'error' : ''}`}
-                placeholder="Mot de passe sécurisé"
-                value={formData.password}
-                onChange={handleInputChange}
-                disabled={isLoading}
-                required
-              />
-              {validationErrors.password && (
-                <span className="error-message">{validationErrors.password}</span>
-              )}
+              <label>Type de compte</label>
+              <div className="account-type-selector">
+                <label className="account-type-option">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="buyer"
+                    checked={formData.accountType === 'buyer'}
+                    onChange={handleInputChange}
+                  />
+                  <div className="account-type-content">
+                    <div className="account-type-icon">🛒</div>
+                    <div className="account-type-info">
+                      <h4>Acheteur</h4>
+                      <p>Achetez des produits numériques</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className="account-type-option">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="seller"
+                    checked={formData.accountType === 'seller'}
+                    onChange={handleInputChange}
+                  />
+                  <div className="account-type-content">
+                    <div className="account-type-icon">🎨</div>
+                    <div className="account-type-info">
+                      <h4>Vendeur</h4>
+                      <p>Vendez vos créations</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">
-                Confirmer le mot de passe
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                className={`form-input ${validationErrors.confirmPassword ? 'error' : ''}`}
-                placeholder="Confirmer le mot de passe"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
-                disabled={isLoading}
-                required
-              />
-              {validationErrors.confirmPassword && (
-                <span className="error-message">{validationErrors.confirmPassword}</span>
-              )}
-            </div>
-
-            <div className="form-checkboxes">
+            <div className="form-group checkbox-group">
               <label className="checkbox-label">
                 <input
                   type="checkbox"
                   name="agreeToTerms"
                   checked={formData.agreeToTerms}
                   onChange={handleInputChange}
-                  disabled={isLoading}
-                  required
+                  className="checkbox-input"
                 />
-                <span>
+                <span className="checkbox-text">
                   J'accepte les{' '}
                   <Link to="/terms" className="link">
                     conditions d'utilisation
-                  </Link>
-                  {' '}et la{' '}
+                  </Link>{' '}
+                  et la{' '}
                   <Link to="/privacy" className="link">
                     politique de confidentialité
                   </Link>
                 </span>
               </label>
-              {validationErrors.agreeToTerms && (
-                <span className="error-message">{validationErrors.agreeToTerms}</span>
+              {errors.agreeToTerms && (
+                <span className="field-error">{errors.agreeToTerms}</span>
               )}
+            </div>
 
+            <div className="form-group checkbox-group">
               <label className="checkbox-label">
                 <input
                   type="checkbox"
                   name="newsletterOptIn"
                   checked={formData.newsletterOptIn}
                   onChange={handleInputChange}
-                  disabled={isLoading}
+                  className="checkbox-input"
                 />
-                <span>
-                  Recevoir les actualités et offres spéciales par email
+                <span className="checkbox-text">
+                  Je souhaite recevoir la newsletter avec les nouveautés
                 </span>
               </label>
             </div>
 
+            {error && (
+              <div className="error-message">
+                {error}
+              </div>
+            )}
+
             <button
               type="submit"
-              className="btn btn-primary btn-full"
               disabled={isLoading}
+              className="btn btn-primary btn-full"
             >
-              {isLoading ? 'Création...' : 'Créer mon compte'}
+              {isLoading ? 'Création du compte...' : 'Créer mon compte'}
             </button>
           </form>
 
-          {/* Footer */}
           <div className="auth-footer">
             <p>
               Déjà un compte ?{' '}
@@ -378,58 +302,8 @@ export const RegisterPage: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Side Image */}
-        <div className="auth-image">
-          <div className="auth-image-content">
-            <h2>
-              {formData.accountType === 'seller'
-                ? 'Partagez vos créations avec le monde'
-                : 'Explorez un univers créatif'
-              }
-            </h2>
-            <p>
-              {formData.accountType === 'seller'
-                ? 'Monétisez votre talent et atteignez des milliers d\'acheteurs'
-                : 'Trouvez l\'inspiration parmi des milliers de designs professionnels'
-              }
-            </p>
-            <div className="auth-features">
-              {formData.accountType === 'seller' ? (
-                <>
-                  <div className="feature-item">
-                    <span className="feature-icon">💰</span>
-                    <span>Commissions avantageuses</span>
-                  </div>
-                  <div className="feature-item">
-                    <span className="feature-icon">📈</span>
-                    <span>Outils de promotion</span>
-                  </div>
-                  <div className="feature-item">
-                    <span className="feature-icon">🎯</span>
-                    <span>Communauté active</span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="feature-item">
-                    <span className="feature-icon">⭐</span>
-                    <span>Designs de qualité</span>
-                  </div>
-                  <div className="feature-item">
-                    <span className="feature-icon">🔄</span>
-                    <span>Téléchargements illimités</span>
-                  </div>
-                  <div className="feature-item">
-                    <span className="feature-icon">🛡️</span>
-                    <span>Garantie satisfaction</span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
+

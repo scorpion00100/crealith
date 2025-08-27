@@ -4,6 +4,11 @@ import authSlice from './slices/authSlice';
 import productSlice from './slices/productSlice';
 import cartSlice from './slices/cartSlice';
 import uiSlice from './slices/uiSlice';
+import favoritesSlice from './slices/favoritesSlice';
+import orderSlice from './slices/orderSlice';
+import notificationSlice from './slices/notificationSlice';
+import analyticsSlice from './slices/analyticsSlice';
+import searchSlice from './slices/searchSlice';
 
 export const store = configureStore({
   reducer: {
@@ -11,6 +16,11 @@ export const store = configureStore({
     products: productSlice,
     cart: cartSlice,
     ui: uiSlice,
+    favorites: favoritesSlice,
+    orders: orderSlice,
+    notifications: notificationSlice,
+    analytics: analyticsSlice,
+    search: searchSlice,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
