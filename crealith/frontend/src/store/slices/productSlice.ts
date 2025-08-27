@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Product, ProductFilters } from '@/types';
+import { productService } from '@/services/product.service';
 
 interface ProductState {
   products: Product[];
@@ -165,11 +166,10 @@ export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async (filters: ProductFilters = {}, { rejectWithValue }) => {
     try {
-      // Simulation d'appel API
-      await new Promise(resolve => setTimeout(resolve, 800));
-      return { data: mockProducts, total: mockProducts.length };
+      const response = await productService.getProducts(filters);
+      return response;
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -178,12 +178,10 @@ export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
   async (id: string, { rejectWithValue }) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const product = mockProducts.find(p => p.id === id);
-      if (!product) throw new Error('Produit non trouvé');
+      const product = await productService.getProductById(id);
       return product;
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
@@ -233,9 +231,10 @@ const productSlice = createSlice({
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.products = action.payload.data;
+        state.products = action.payload.products;
         state.pagination.total = action.payload.total;
-        state.pagination.totalPages = Math.ceil(action.payload.total / state.pagination.limit);
+        state.pagination.page = action.payload.page;
+        state.pagination.totalPages = action.payload.totalPages;
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.isLoading = false;

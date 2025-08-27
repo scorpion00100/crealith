@@ -1,117 +1,57 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Sidebar } from '@/components/ui/Sidebar';
 import { ProductCard } from '@/components/ui/ProductCard';
-import { fetchProducts, setFilters, searchProducts } from '@/store/slices/productSlice';
-import { addToCart } from '@/store/slices/cartSlice';
+import { Sidebar } from '@/components/ui/Sidebar';
+import { fetchProducts, setFilters, clearFilters } from '@/store/slices/productSlice';
+import { addToCartAsync } from '@/store/slices/cartSlice';
 import { addNotification } from '@/store/slices/uiSlice';
-import { Product } from '@/types';
+import { Product, ProductFilters } from '@/types';
 import { useAppDispatch, useAppSelector } from '@/store';
 
 export const CatalogPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [sortBy, setSortBy] = useState<string>('featured');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Sélecteurs Redux
-  const {
-    products,
-    searchResults,
-    isLoading,
-    filters,
-    categories
-  } = useAppSelector(state => state.products);
-
-  const { searchQuery } = useAppSelector(state => state.ui);
+  const { products, isLoading, pagination, filters } = useAppSelector(state => state.products);
   const { isAuthenticated } = useAppSelector(state => state.auth);
 
-  // État local
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
-  // Synchronisation avec les paramètres URL
+  // Récupérer les filtres depuis l'URL
   useEffect(() => {
-    const category = searchParams.get('category') || 'all';
-    const search = searchParams.get('search') || '';
-    const sort = searchParams.get('sort') || 'featured';
+    const urlFilters: ProductFilters = {};
+    const category = searchParams.get('category');
+    const search = searchParams.get('search');
+    const minPrice = searchParams.get('minPrice');
+    const maxPrice = searchParams.get('maxPrice');
+    const sortBy = searchParams.get('sortBy');
 
-    setSelectedCategory(category);
-    setSortBy(sort);
+    if (category) urlFilters.category = category;
+    if (search) urlFilters.search = search;
+    if (minPrice) urlFilters.priceRange = { ...urlFilters.priceRange, min: parseFloat(minPrice) };
+    if (maxPrice) urlFilters.priceRange = { ...urlFilters.priceRange, max: parseFloat(maxPrice) };
+    if (sortBy) urlFilters.sortBy = sortBy;
 
-    // Mettre à jour les filtres Redux
-    dispatch(setFilters({ category: category !== 'all' ? category : undefined }));
-
-    // Rechercher si terme présent
-    if (search) {
-      dispatch(searchProducts(search));
-    }
+    dispatch(setFilters(urlFilters));
   }, [searchParams, dispatch]);
 
-  // Charger les produits au montage
+  // Charger les produits
   useEffect(() => {
-    if (products.length === 0) {
-      dispatch(fetchProducts(filters));
-    }
-  }, [dispatch, products.length, filters]);
-
-  // Produits à afficher (recherche ou liste complète)
-  const displayProducts = useMemo(() => {
-    let productsToShow = searchQuery && searchResults.length > 0 ? searchResults : products;
-
-    // Filtrer par catégorie si sélectionnée
-    if (selectedCategory !== 'all') {
-      productsToShow = productsToShow.filter(product =>
-        product.category.slug === selectedCategory ||
-        product.tags.some(tag => tag.toLowerCase().includes(selectedCategory.toLowerCase()))
-      );
-    }
-
-    // Tri
-    const sortedProducts = [...productsToShow].sort((a, b) => {
-      switch (sortBy) {
-        case 'price-low':
-          return parseFloat(a.price) - parseFloat(b.price);
-        case 'price-high':
-          return parseFloat(b.price) - parseFloat(a.price);
-        case 'rating':
-          return (b.averageRating || 0) - (a.averageRating || 0);
-        case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'popular':
-          return (b.totalSales || 0) - (a.totalSales || 0);
-        default: // featured
-          return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
-      }
-    });
-
-    return sortedProducts;
-  }, [products, searchResults, searchQuery, selectedCategory, sortBy]);
-
-  // Handlers
-  const handleCategoryChange = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-
-    const newParams = new URLSearchParams(searchParams);
-    if (categoryId === 'all') {
-      newParams.delete('category');
-    } else {
-      newParams.set('category', categoryId);
-    }
-    setSearchParams(newParams);
-
-    // Mettre à jour les filtres Redux
-    dispatch(setFilters({ category: categoryId !== 'all' ? categoryId : undefined }));
-  };
-
-  const handleSortChange = (sortType: string) => {
-    setSortBy(sortType);
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set('sort', sortType);
-    setSearchParams(newParams);
-  };
+    dispatch(fetchProducts(filters));
+  }, [dispatch, filters]);
 
   const handleAddToCart = async (product: Product) => {
+    if (!isAuthenticated) {
+      dispatch(addNotification({
+        type: 'warning',
+        message: 'Connectez-vous pour ajouter au panier',
+        duration: 4000
+      }));
+      return;
+    }
+
     try {
-      dispatch(addToCart(product));
+      await dispatch(addToCartAsync({ productId: product.id, quantity: 1 })).unwrap();
       dispatch(addNotification({
         type: 'success',
         message: `${product.title} ajouté au panier`,
@@ -126,130 +66,140 @@ export const CatalogPage: React.FC = () => {
     }
   };
 
-  const handleToggleFavorite = (productId: number | string) => {
-    if (!isAuthenticated) {
-      dispatch(addNotification({
-        type: 'warning',
-        message: 'Connectez-vous pour ajouter aux favoris',
-        duration: 4000
-      }));
-      return;
-    }
+  const handleFilterChange = (newFilters: ProductFilters) => {
+    const updatedFilters = { ...filters, ...newFilters };
+    dispatch(setFilters(updatedFilters));
 
-    // TODO: Implémenter la logique des favoris
-    dispatch(addNotification({
-      type: 'info',
-      message: 'Fonctionnalité favoris bientôt disponible',
-      duration: 3000
-    }));
+    // Mettre à jour l'URL
+    const params = new URLSearchParams();
+    Object.entries(updatedFilters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        if (key === 'priceRange') {
+          if (value.min) params.set('minPrice', value.min.toString());
+          if (value.max) params.set('maxPrice', value.max.toString());
+        } else {
+          params.set(key, value.toString());
+        }
+      }
+    });
+    setSearchParams(params);
   };
 
-  const handlePreview = (product: Product) => {
-    console.log('Aperçu:', product.title);
-    // TODO: Navigation vers page de détail produit
+  const handleClearFilters = () => {
+    dispatch(clearFilters());
+    setSearchParams({});
   };
 
-  // Catégories pour la sidebar
-  const categoriesWithCount = [
-    { id: 'all', name: 'Tous les produits', count: products.length, icon: '📂' },
-    { id: 'templates-web', name: 'Templates Web', count: products.filter(p => p.category.slug === 'templates-web').length, icon: '🌐' },
-    { id: 'dashboards', name: 'Dashboards', count: products.filter(p => p.category.slug === 'dashboards').length, icon: '📊' },
-    { id: 'ui-kits', name: 'UI Kits', count: products.filter(p => p.category.slug === 'ui-kits').length, icon: '🎨' },
-    { id: 'mobile', name: 'Mobile Apps', count: products.filter(p => p.tags.includes('mobile')).length, icon: '📱' },
-  ];
+  const handlePageChange = (page: number) => {
+    handleFilterChange({ ...filters, page });
+  };
 
   return (
     <div className="catalog-page">
       <div className="container">
-        <div className="main-layout">
+        {/* Header du catalogue */}
+        <div className="catalog-header">
+          <div className="catalog-title">
+            <h1>Catalogue de produits</h1>
+            <p>{pagination.total} produits disponibles</p>
+          </div>
+
+          <div className="catalog-controls">
+            <button
+              className="btn btn-outline"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              Filtres
+            </button>
+
+            <div className="view-mode-toggle">
+              <button
+                className={`btn btn-icon ${viewMode === 'grid' ? 'active' : ''}`}
+                onClick={() => setViewMode('grid')}
+              >
+                📱
+              </button>
+              <button
+                className={`btn btn-icon ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                📋
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="catalog-content">
+          {/* Sidebar des filtres */}
           <Sidebar
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-            categories={categoriesWithCount}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
           />
 
-          <div className="main-content">
-            {/* Header de la page */}
-            <div className="catalog-header">
-              <div className="catalog-title">
-                <h1>Catalogue</h1>
-                <p>
-                  {searchQuery
-                    ? `Résultats pour "${searchQuery}"`
-                    : 'Découvrez les créations de notre communauté'
-                  }
-                </p>
+          {/* Liste des produits */}
+          <div className="products-section">
+            {isLoading ? (
+              <div className="loading-container">
+                <div className="loading-spinner">Chargement...</div>
               </div>
-
-              {/* Filtres et tri */}
-              <div className="catalog-toolbar">
-                <div className="toolbar-left">
-                  <span className="results-count">
-                    {displayProducts.length} produit{displayProducts.length !== 1 ? 's' : ''} trouvé{displayProducts.length !== 1 ? 's' : ''}
-                  </span>
-                  {isLoading && (
-                    <span className="loading-indicator">Chargement...</span>
-                  )}
+            ) : products.length > 0 ? (
+              <>
+                <div className={`products-grid ${viewMode === 'list' ? 'list-view' : ''}`}>
+                  {products.map((product) => (
+                    <ProductCard
+                      key={product.id}
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      onToggleFavorite={() => { }}
+                      onPreview={() => { }}
+                      isFavorite={false}
+                    />
+                  ))}
                 </div>
 
-                <div className="toolbar-right">
-                  <select
-                    className="sort-select"
-                    value={sortBy}
-                    onChange={(e) => handleSortChange(e.target.value)}
-                  >
-                    <option value="featured">En vedette</option>
-                    <option value="popular">Les plus populaires</option>
-                    <option value="newest">Les plus récents</option>
-                    <option value="price-low">Prix croissant</option>
-                    <option value="price-high">Prix décroissant</option>
-                    <option value="rating">Mieux notés</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+                {/* Pagination */}
+                {pagination.totalPages > 1 && (
+                  <div className="pagination">
+                    <button
+                      className="btn btn-outline"
+                      disabled={pagination.page === 1}
+                      onClick={() => handlePageChange(pagination.page - 1)}
+                    >
+                      Précédent
+                    </button>
 
-            {/* Résultats */}
-            {displayProducts.length > 0 ? (
-              <div className="products-grid">
-                {displayProducts.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onToggleFavorite={() => handleToggleFavorite(product.id)}
-                    onPreview={handlePreview}
-                    isFavorite={false} // TODO: Récupérer depuis slice favoris
-                  />
-                ))}
-              </div>
+                    <div className="page-numbers">
+                      {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          className={`btn btn-page ${page === pagination.page ? 'active' : ''}`}
+                          onClick={() => handlePageChange(page)}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      className="btn btn-outline"
+                      disabled={pagination.page === pagination.totalPages}
+                      onClick={() => handlePageChange(pagination.page + 1)}
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="no-results">
-                <div className="no-results-icon">🔍</div>
+              <div className="no-products">
                 <h3>Aucun produit trouvé</h3>
-                <p>
-                  {searchQuery
-                    ? `Aucun résultat pour "${searchQuery}". Essayez avec d'autres mots-clés.`
-                    : 'Essayez de modifier vos critères de recherche ou explorez d\'autres catégories.'
-                  }
-                </p>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSearchParams({});
-                    dispatch(setFilters({}));
-                  }}
-                >
-                  Réinitialiser les filtres
+                <p>Essayez de modifier vos filtres ou de rechercher autre chose.</p>
+                <button className="btn btn-primary" onClick={handleClearFilters}>
+                  Effacer les filtres
                 </button>
-              </div>
-            )}
-
-            {/* Message de chargement */}
-            {isLoading && products.length === 0 && (
-              <div className="loading-container" style={{ textAlign: 'center', padding: '4rem' }}>
-                <div className="loading-spinner">Chargement des produits...</div>
               </div>
             )}
           </div>
