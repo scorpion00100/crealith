@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { addNotification } from '@/store/slices/uiSlice';
+import { addNotification } from '@/store/slices/notificationSlice';
 import { useAppDispatch } from '@/store';
 import { Bell, X, CheckCircle, AlertCircle, Info, XCircle } from 'lucide-react';
 
@@ -80,9 +80,12 @@ export const NotificationCenter: React.FC = () => {
 
         // Afficher une notification toast
         dispatch(addNotification({
+            id: Date.now().toString(),
             type: notification.type,
+            title: notification.title,
             message: notification.message,
-            duration: 5000
+            read: false,
+            createdAt: new Date().toISOString()
         }));
     };
 
@@ -113,15 +116,15 @@ export const NotificationCenter: React.FC = () => {
     const getNotificationIcon = (type: string) => {
         switch (type) {
             case 'success':
-                return <CheckCircle size={20} className="text-green-500" />;
+                return <CheckCircle size={20} className="text-emerald-500" />;
             case 'error':
                 return <XCircle size={20} className="text-red-500" />;
             case 'warning':
-                return <AlertCircle size={20} className="text-yellow-500" />;
+                return <AlertCircle size={20} className="text-amber-500" />;
             case 'info':
-                return <Info size={20} className="text-blue-500" />;
+                return <Info size={20} className="text-slate-600" />;
             default:
-                return <Info size={20} className="text-gray-500" />;
+                return <Info size={20} className="text-slate-500" />;
         }
     };
 
@@ -142,16 +145,16 @@ export const NotificationCenter: React.FC = () => {
     if (!isAuthenticated) return null;
 
     return (
-        <div className="notification-center">
+        <div className="relative">
             {/* Bouton de notification */}
             <button
-                className="notification-toggle"
+                className="relative p-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-all duration-300 group"
                 onClick={() => setIsOpen(!isOpen)}
                 aria-label="Notifications"
             >
-                <Bell size={20} />
+                <Bell className="h-6 w-6 group-hover:scale-110 transition-transform duration-300" />
                 {unreadCount > 0 && (
-                    <span className="notification-badge">
+                    <span className="absolute -top-2 -right-2 h-6 w-6 bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg animate-pulse">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
@@ -159,89 +162,100 @@ export const NotificationCenter: React.FC = () => {
 
             {/* Panneau de notifications */}
             {isOpen && (
-                <div className="notification-panel">
-                    <div className="notification-header">
-                        <h3>Notifications</h3>
-                        <div className="notification-actions">
-                            {unreadCount > 0 && (
+                <div className="absolute right-0 mt-3 w-80 bg-white rounded-3xl shadow-2xl border border-slate-100 py-3 z-50 max-h-96 overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-black text-slate-900">Notifications</h3>
+                            <div className="flex items-center space-x-3">
+                                {unreadCount > 0 && (
+                                    <button
+                                        className="text-xs text-slate-600 hover:text-slate-900 transition-colors duration-300 font-semibold"
+                                        onClick={markAllAsRead}
+                                    >
+                                        Tout marquer comme lu
+                                    </button>
+                                )}
                                 <button
-                                    className="btn-link"
-                                    onClick={markAllAsRead}
+                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-300"
+                                    onClick={() => setIsOpen(false)}
                                 >
-                                    Tout marquer comme lu
+                                    <X size={16} />
                                 </button>
-                            )}
-                            <button
-                                className="btn-icon"
-                                onClick={() => setIsOpen(false)}
-                            >
-                                <X size={16} />
-                            </button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="notification-list">
+                    <div className="overflow-y-auto max-h-64">
                         {notifications.length === 0 ? (
-                            <div className="empty-notifications">
-                                <Bell size={32} className="text-gray-400" />
-                                <p>Aucune notification</p>
+                            <div className="px-6 py-12 text-center">
+                                <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                                    <Bell size={32} className="text-slate-400" />
+                                </div>
+                                <p className="text-slate-500 font-semibold">Aucune notification</p>
+                                <p className="text-sm text-slate-400 mt-1 font-medium">Vous serez notifié des nouvelles activités</p>
                             </div>
                         ) : (
-                            notifications.map((notification) => (
-                                <div
-                                    key={notification.id}
-                                    className={`notification-item ${!notification.read ? 'unread' : ''}`}
-                                    onClick={() => markAsRead(notification.id)}
-                                >
-                                    <div className="notification-icon">
-                                        {getNotificationIcon(notification.type)}
-                                    </div>
-
-                                    <div className="notification-content">
-                                        <div className="notification-title">
-                                            {notification.title}
-                                        </div>
-                                        <div className="notification-message">
-                                            {notification.message}
-                                        </div>
-                                        <div className="notification-meta">
-                                            <span className="notification-time">
-                                                {formatTimestamp(notification.timestamp)}
-                                            </span>
-                                            {notification.action && (
-                                                <button
-                                                    className="btn-link"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        window.location.href = notification.action!.url;
-                                                    }}
-                                                >
-                                                    {notification.action.label}
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        className="btn-icon notification-remove"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            removeNotification(notification.id);
-                                        }}
+                            <div className="divide-y divide-slate-100">
+                                {notifications.map((notification) => (
+                                    <div
+                                        key={notification.id}
+                                        className={`px-6 py-4 hover:bg-slate-50 transition-all duration-300 cursor-pointer ${!notification.read ? 'bg-gradient-to-r from-slate-50 to-slate-100' : ''
+                                            }`}
+                                        onClick={() => markAsRead(notification.id)}
                                     >
-                                        <X size={16} />
-                                    </button>
-                                </div>
-                            ))
+                                        <div className="flex items-start space-x-4">
+                                            <div className="flex-shrink-0 mt-1">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center">
+                                                    {getNotificationIcon(notification.type)}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-black text-slate-900 mb-1">
+                                                    {notification.title}
+                                                </div>
+                                                <div className="text-sm text-slate-600 mb-3 leading-relaxed font-medium">
+                                                    {notification.message}
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs text-slate-500 font-semibold">
+                                                        {formatTimestamp(notification.timestamp)}
+                                                    </span>
+                                                    {notification.action && (
+                                                        <button
+                                                            className="text-xs text-slate-600 hover:text-slate-900 font-semibold transition-colors duration-300"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                window.location.href = notification.action!.url;
+                                                            }}
+                                                        >
+                                                            {notification.action.label}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                className="flex-shrink-0 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-300"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    removeNotification(notification.id);
+                                                }}
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
 
                     {notifications.length > 0 && (
-                        <div className="notification-footer">
+                        <div className="px-6 py-4 border-t border-slate-100">
                             <button
-                                className="btn-link"
+                                className="w-full text-sm text-slate-600 hover:text-slate-900 font-semibold transition-colors duration-300"
                                 onClick={() => {
-                                    // Naviguer vers la page des notifications
                                     window.location.href = '/dashboard/notifications';
                                 }}
                             >
@@ -250,6 +264,14 @@ export const NotificationCenter: React.FC = () => {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* Fermer le panneau en cliquant à l'extérieur */}
+            {isOpen && (
+                <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsOpen(false)}
+                />
             )}
         </div>
     );

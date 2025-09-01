@@ -1,182 +1,261 @@
-import React, { useState, ChangeEvent } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { setSearchQuery } from '@/store/slices/uiSlice';
-import { searchProducts } from '@/store/slices/productSlice';
-import { logout } from '@/store/slices/authSlice';
-import { toggleCart } from '@/store/slices/cartSlice';
-import { useAppDispatch, useAppSelector } from '@/store';
-import { NotificationCenter } from '@/components/ui/NotificationCenter';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAppSelector } from '@/store';
+import {
+  Home,
+  Grid3X3,
+  Info,
+  Mail,
+  Search,
+  ShoppingCart,
+  Heart,
+  User,
+  Menu,
+  X,
+  ChevronDown,
+  Sparkles,
+  Bell,
+  Settings
+} from 'lucide-react';
 
 export const Header: React.FC = () => {
-    const dispatch = useAppDispatch();
-    const navigate = useNavigate();
-    const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { isAuthenticated, user } = useAppSelector(state => state.auth);
+  const { items: cartItems } = useAppSelector(state => state.cart);
 
-    // Sélecteurs Redux
-    const { isAuthenticated, user } = useAppSelector(state => state.auth);
-    const { totalItems } = useAppSelector(state => state.cart);
-    const { searchQuery } = useAppSelector(state => state.ui);
-    const favoritesCount = useAppSelector(state => state.favorites.favorites.length);
+  const cartItemsCount = cartItems.length;
 
-    // État local
-    const [localSearchTerm, setLocalSearchTerm] = useState<string>(searchQuery);
-
-    const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setLocalSearchTerm(value);
-    };
-
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (localSearchTerm.trim()) {
-            // Mettre à jour le store
-            dispatch(setSearchQuery(localSearchTerm.trim()));
-            dispatch(searchProducts(localSearchTerm.trim()));
-
-            // Rediriger vers le catalogue si on n'y est pas déjà
-            if (location.pathname !== '/catalog') {
-                navigate(`/catalog?search=${encodeURIComponent(localSearchTerm.trim())}`);
-            }
-        } else {
-            // Vider la recherche
-            dispatch(setSearchQuery(''));
-            dispatch(searchProducts(''));
-        }
-    };
-
-    const handleLogoClick = () => {
-        navigate('/');
-        // Réinitialiser la recherche si on retourne à l'accueil
-        if (searchQuery) {
-            dispatch(setSearchQuery(''));
-            setLocalSearchTerm('');
-        }
-    };
-
-    const handleCartClick = () => {
-        dispatch(toggleCart());
-    };
-
-    const handleLogout = () => {
-        dispatch(logout());
-        navigate('/');
-    };
-
-    return (
-        <header className="header">
-            <div className="header-content">
-                {/* Logo */}
-                <div className="logo" onClick={handleLogoClick} style={{ cursor: 'pointer' }}>
-                    <div className="logo-icon">C</div>
-                    <div className="logo-text">Crealith</div>
+  return (
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-800/95 backdrop-blur-md border-b border-gray-700/50 shadow-medium">
+      <div className="max-w-7xl mx-auto px-1 sm:px-2 lg:px-4">
+        <div className="flex items-center justify-between h-20">
+          {/* Logo - Section gauche ultra-compacte */}
+          <div className="flex items-center flex-shrink-0 mr-1">
+            <Link to="/" className="flex items-center space-x-2 group">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-xl flex items-center justify-center shadow-premium group-hover:shadow-large transition-all duration-300 group-hover:scale-110">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-accent-500 to-secondary-500 rounded-full animate-pulse-soft"></div>
+              </div>
+              <span className="text-xl font-black text-gradient-primary">Crealith</span>
+            </Link>
+          </div>
 
-                {/* Navigation */}
-                <nav className="header-nav">
-                    <Link
-                        to="/"
-                        className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}
-                    >
-                        Accueil
-                    </Link>
-                    <Link
-                        to="/catalog"
-                        className={`nav-link ${location.pathname === '/catalog' ? 'active' : ''}`}
-                    >
-                        Catalogue
-                    </Link>
-                    {isAuthenticated && (
-                        <Link
-                            to="/dashboard"
-                            className={`nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}
-                        >
-                            Dashboard
-                        </Link>
-                    )}
-                </nav>
+          {/* Navigation Desktop - Section centrale ultra-compacte */}
+          <nav className="hidden lg:flex items-center space-x-2 mx-1">
+            <Link
+              to="/"
+              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+            >
+              <Home className="w-3 h-3 group-hover:animate-wiggle" />
+              <span>Accueil</span>
+            </Link>
+            <Link
+              to="/catalog"
+              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+            >
+              <Grid3X3 className="w-3 h-3 group-hover:animate-wiggle" />
+              <span>Catalogue</span>
+            </Link>
+            <Link
+              to="/about"
+              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+            >
+              <Info className="w-3 h-3 group-hover:animate-wiggle" />
+              <span>À propos</span>
+            </Link>
+            <Link
+              to="/contact"
+              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+            >
+              <Mail className="w-3 h-3 group-hover:animate-wiggle" />
+              <span>Contact</span>
+            </Link>
+          </nav>
 
-                {/* Barre de recherche */}
-                <form className="search-container" onSubmit={handleSearchSubmit}>
-                    <div className="search-icon">
-                        🔍
-                    </div>
-                    <input
-                        type="text"
-                        className="search-input"
-                        placeholder="Rechercher des designs, templates et assets..."
-                        value={localSearchTerm}
-                        onChange={handleSearchChange}
-                    />
-                    <button type="submit" style={{ display: 'none' }} />
-                </form>
-
-                {/* Actions utilisateur */}
-                <div className="header-actions">
-                    {/* Panier */}
-                    <button className="cart-btn" onClick={handleCartClick}>
-                        🛒
-                        {totalItems > 0 && (
-                            <span className="cart-count">{totalItems}</span>
-                        )}
-                    </button>
-
-                    {/* Favoris */}
-                    <Link to="/favorites" className="favorites-btn">
-                        ❤️
-                        {favoritesCount > 0 && (
-                            <span className="favorites-count">{favoritesCount}</span>
-                        )}
-                    </Link>
-
-                    {/* Notifications */}
-                    <NotificationCenter />
-
-                    {/* État d'authentification */}
-                    {isAuthenticated ? (
-                        <div className="user-menu">
-                            <div className="user-info">
-                                {user?.avatar && (
-                                    <img
-                                        src={user.avatar}
-                                        alt={`${user.firstName} ${user.lastName}`}
-                                        className="user-avatar"
-                                    />
-                                )}
-                                <span className="user-name">
-                                    {user?.firstName} {user?.lastName}
-                                </span>
-                            </div>
-                            <div className="user-dropdown">
-                                <Link to="/profile" className="dropdown-item">
-                                    👤 Profil
-                                </Link>
-                                <Link to="/dashboard" className="dropdown-item">
-                                    📊 Dashboard
-                                </Link>
-                                <Link to="/orders" className="dropdown-item">
-                                    📦 Mes commandes
-                                </Link>
-                                <button
-                                    onClick={handleLogout}
-                                    className="dropdown-item logout-btn"
-                                >
-                                    🚪 Se déconnecter
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="auth-buttons">
-                            <Link to="/login" className="btn btn-outline">
-                                Se connecter
-                            </Link>
-                            <Link to="/register" className="btn btn-primary">
-                                Créer un compte
-                            </Link>
-                        </div>
-                    )}
-                </div>
+          {/* Search Bar - Section centrale maximisée */}
+          <div className="hidden lg:flex flex-1 max-w-4xl mx-8">
+            <div className="relative w-full group">
+              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary-400 transition-colors duration-300" />
+              <input
+                type="text"
+                placeholder="Rechercher des créations, templates, illustrations, UI kits, icônes, photos..."
+                className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 shadow-soft focus:shadow-medium text-base"
+              />
             </div>
-        </header>
-    );
+          </div>
+
+          {/* Actions - Section droite compacte */}
+          <div className="flex items-center space-x-2 ml-1">
+            {/* Cart */}
+            <Link
+              to="/cart"
+              className="relative p-2 text-gray-400 hover:text-primary-400 transition-all duration-300 group bg-gray-800 hover:bg-primary-500/10 rounded-xl"
+            >
+              <ShoppingCart className="w-4 h-4 group-hover:animate-wiggle" />
+              {cartItemsCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-bounce-in shadow-premium">
+                  {cartItemsCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Favorites */}
+            <Link
+              to="/favorites"
+              className="p-2 text-gray-400 hover:text-secondary-400 transition-all duration-300 group bg-gray-800 hover:bg-secondary-500/10 rounded-xl"
+            >
+              <Heart className="w-4 h-4 group-hover:animate-wiggle" />
+            </Link>
+
+            {/* User Menu */}
+            {isAuthenticated ? (
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center space-x-2 p-2 rounded-xl hover:bg-gray-800 transition-all duration-300 group"
+                >
+                  <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center shadow-premium group-hover:shadow-medium">
+                    <User className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="hidden sm:block text-gray-100 font-medium text-sm">
+                    {user?.firstName || 'Utilisateur'}
+                  </span>
+                  <ChevronDown className="w-3 h-3 text-gray-500 group-hover:text-primary-400 transition-colors duration-300" />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 mt-3 w-56 bg-gray-800 rounded-3xl shadow-large border border-gray-700 py-3 animate-in-down">
+                    <div className="px-4 py-2 border-b border-gray-700">
+                      <p className="text-sm text-gray-500">Connecté en tant que</p>
+                      <p className="font-semibold text-gray-100">{user?.firstName || 'Utilisateur'}</p>
+                    </div>
+
+                    <div className="py-2">
+                      <Link
+                        to="/dashboard"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                      >
+                        <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Tableau de bord</span>
+                      </Link>
+                      <Link
+                        to="/profile"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                      >
+                        <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Profil</span>
+                      </Link>
+                      <Link
+                        to="/orders"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-accent-400 transition-all duration-300 group"
+                      >
+                        <div className="w-2 h-2 bg-accent-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Mes commandes</span>
+                      </Link>
+                      <Link
+                        to="/favorites"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                      >
+                        <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Favoris</span>
+                      </Link>
+                    </div>
+
+                    <div className="border-t border-gray-700 pt-2">
+                      <button className="w-full text-left px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-error-400 transition-all duration-300 group">
+                        <div className="w-2 h-2 bg-error-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Se déconnecter</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Link
+                  to="/login"
+                  className="px-3 py-2 text-gray-400 hover:text-primary-400 font-medium transition-all duration-300 hover:bg-gray-800 rounded-xl text-sm"
+                >
+                  Se connecter
+                </Link>
+                <Link
+                  to="/register"
+                  className="btn-primary px-3 py-2 shadow-premium hover:shadow-medium text-sm"
+                >
+                  S'inscrire
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-2 text-gray-400 hover:text-primary-400 transition-all duration-300 bg-gray-800 hover:bg-primary-500/10 rounded-xl"
+            >
+              {isMenuOpen ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <Menu className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Search */}
+        <div className="lg:hidden pb-4">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary-400 transition-colors duration-300" />
+            <input
+              type="text"
+              placeholder="Rechercher des créations..."
+              className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 shadow-soft focus:shadow-medium"
+            />
+          </div>
+        </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="lg:hidden border-t border-gray-700 py-4 animate-in-down">
+            <nav className="space-y-2">
+              <Link
+                to="/"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Home className="w-5 h-5 group-hover:animate-wiggle" />
+                <span className="font-medium">Accueil</span>
+              </Link>
+              <Link
+                to="/catalog"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Grid3X3 className="w-5 h-5 group-hover:animate-wiggle" />
+                <span className="font-medium">Catalogue</span>
+              </Link>
+              <Link
+                to="/about"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Info className="w-5 h-5 group-hover:animate-wiggle" />
+                <span className="font-medium">À propos</span>
+              </Link>
+              <Link
+                to="/contact"
+                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Mail className="w-5 h-5 group-hover:animate-wiggle" />
+                <span className="font-medium">Contact</span>
+              </Link>
+            </nav>
+          </div>
+        )}
+      </div>
+    </header>
+  );
 };

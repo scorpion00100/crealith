@@ -7,6 +7,7 @@ import favoriteRoutes from './favorites.routes';
 import notificationRoutes from './notification.routes';
 import analyticsRoutes from './analytics.routes';
 import searchRoutes from './search.routes';
+import downloadRoutes from './download.routes';
 
 const router = Router();
 
@@ -22,7 +23,8 @@ router.get('/', (req, res) => {
           favorites: '/api/favorites',
           notifications: '/api/notifications',
           analytics: '/api/analytics',
-          search: '/api/search'
+          search: '/api/search',
+          downloads: '/api/downloads'
         }
   });
 });
@@ -35,5 +37,6 @@ router.use('/favorites', favoriteRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/search', searchRoutes);
+router.use('/downloads', downloadRoutes);
 
 export default router;

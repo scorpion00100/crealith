@@ -1,148 +1,213 @@
-import { Request, Response, NextFunction } from 'express';
-import { OrderService } from '../services/order.service';
-import { createError } from '../utils/errors';
+import { Request, Response } from 'express';
 
-const orderService = new OrderService();
+export const orderController = {
+  // Récupérer les commandes de l'utilisateur
+  async getUserOrders(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { page = 1, limit = 10, status, search, dateFrom, dateTo } = req.query;
 
-export const addToCart = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { productId, quantity = 1 } = req.body;
-    
-    if (!productId) {
-      throw createError.badRequest('Product ID is required');
+      // TODO: Remplacer par de vraies requêtes Prisma
+      const mockOrders = [
+        {
+          id: '1',
+          orderNumber: 'ORD-2024-001',
+          totalAmount: 29.99,
+          status: 'DELIVERED',
+          createdAt: '2024-06-15T10:30:00Z',
+          updatedAt: '2024-06-15T14:45:00Z',
+          items: [
+            {
+              id: 'item-1',
+              quantity: 1,
+              price: 29.99,
+              product: {
+                id: 'prod-1',
+                title: 'Template WordPress Premium',
+                thumbnailUrl: 'https://via.placeholder.com/300x200?text=Template+WP',
+                fileUrl: 'https://example.com/files/template-wp.zip',
+                downloadsCount: 120
+              }
+            }
+          ]
+        },
+        {
+          id: '2',
+          orderNumber: 'ORD-2024-002',
+          totalAmount: 19.99,
+          status: 'PAID',
+          createdAt: '2024-06-10T09:15:00Z',
+          updatedAt: '2024-06-10T09:15:00Z',
+          items: [
+            {
+              id: 'item-2',
+              quantity: 1,
+              price: 19.99,
+              product: {
+                id: 'prod-2',
+                title: 'Pack Icônes Vectorielles',
+                thumbnailUrl: 'https://via.placeholder.com/300x200?text=Icons+Pack',
+                fileUrl: 'https://example.com/files/icons-pack.zip',
+                downloadsCount: 85
+              }
+            }
+          ]
+        },
+        {
+          id: '3',
+          orderNumber: 'ORD-2024-003',
+          totalAmount: 14.99,
+          status: 'PENDING',
+          createdAt: '2024-06-05T16:20:00Z',
+          updatedAt: '2024-06-05T16:20:00Z',
+          items: [
+            {
+              id: 'item-3',
+              quantity: 1,
+              price: 14.99,
+              product: {
+                id: 'prod-3',
+                title: 'E-book Marketing Digital',
+                thumbnailUrl: 'https://via.placeholder.com/300x200?text=E-book',
+                fileUrl: 'https://example.com/files/ebook-marketing.pdf',
+                downloadsCount: 0
+              }
+            }
+          ]
+        }
+      ];
+
+      // Filtrage mock
+      let filteredOrders = mockOrders;
+      
+      if (status) {
+        filteredOrders = filteredOrders.filter(order => order.status === status);
+      }
+      
+      if (search) {
+        const searchLower = search.toString().toLowerCase();
+        filteredOrders = filteredOrders.filter(order =>
+          order.items.some(item => 
+            item.product.title.toLowerCase().includes(searchLower) ||
+            order.orderNumber.toLowerCase().includes(searchLower)
+          )
+        );
+      }
+
+      // Pagination mock
+      const startIndex = (Number(page) - 1) * Number(limit);
+      const endIndex = startIndex + Number(limit);
+      const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+      const pagination = {
+        page: Number(page),
+        limit: Number(limit),
+        total: filteredOrders.length,
+        totalPages: Math.ceil(filteredOrders.length / Number(limit))
+      };
+
+      res.json({
+        orders: paginatedOrders,
+        pagination
+      });
+    } catch (error) {
+      console.error('Erreur récupération commandes:', error);
+      res.status(500).json({ message: 'Erreur lors du chargement des commandes' });
     }
+  },
 
-    const cartItem = await orderService.addToCart({
-      userId: req.user!.id,
-      productId,
-      quantity: parseInt(quantity),
-    });
+  // Récupérer une commande spécifique
+  async getOrderById(req: Request, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user?.id;
 
-    res.json({ success: true, data: cartItem });
-  } catch (error) {
-    next(error);
-  }
-};
+      // TODO: Remplacer par une vraie requête Prisma
+      const mockOrder = {
+        id: orderId,
+        orderNumber: 'ORD-2024-001',
+        totalAmount: 29.99,
+        status: 'DELIVERED',
+        createdAt: '2024-06-15T10:30:00Z',
+        updatedAt: '2024-06-15T14:45:00Z',
+        items: [
+          {
+            id: 'item-1',
+            quantity: 1,
+            price: 29.99,
+            product: {
+              id: 'prod-1',
+              title: 'Template WordPress Premium',
+              thumbnailUrl: 'https://via.placeholder.com/300x200?text=Template+WP',
+              fileUrl: 'https://example.com/files/template-wp.zip',
+              downloadsCount: 120
+            }
+          }
+        ]
+      };
 
-export const getCart = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const cartItems = await orderService.getCart(req.user!.id);
-    res.json({ success: true, data: cartItems });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateCartItem = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { quantity } = req.body;
-    
-    if (!quantity || quantity < 1) {
-      throw createError.badRequest('Valid quantity is required');
+      res.json(mockOrder);
+    } catch (error) {
+      console.error('Erreur récupération commande:', error);
+      res.status(500).json({ message: 'Erreur lors du chargement de la commande' });
     }
+  },
 
-    const cartItem = await orderService.updateCartItem(
-      req.params.id,
-      req.user!.id,
-      parseInt(quantity)
-    );
+  // Créer une nouvelle commande
+  async createOrder(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      const { items, paymentMethod } = req.body;
 
-    res.json({ success: true, data: cartItem });
-  } catch (error) {
-    next(error);
-  }
-};
+      // TODO: Implémenter la logique de création de commande avec Stripe
+      const mockOrder = {
+        id: 'new-order-id',
+        orderNumber: 'ORD-2024-004',
+        totalAmount: 49.98,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        items: items
+      };
 
-export const removeFromCart = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await orderService.removeFromCart(req.params.id, req.user!.id);
-    res.json({ success: true, message: 'Item removed from cart' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const clearCart = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await orderService.clearCart(req.user!.id);
-    res.json({ success: true, message: 'Cart cleared' });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { paymentMethod = 'card' } = req.body;
-
-    const result = await orderService.createOrder({
-      userId: req.user!.id,
-      items: [], // Les items viennent du panier
-      paymentMethod,
-    });
-
-    res.status(201).json({
-      success: true,
-      data: {
-        order: result.order,
-        clientSecret: result.paymentIntent.client_secret,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const confirmOrder = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { paymentIntentId } = req.body;
-
-    if (!paymentIntentId) {
-      throw createError.badRequest('Payment intent ID is required');
+      res.status(201).json(mockOrder);
+    } catch (error) {
+      console.error('Erreur création commande:', error);
+      res.status(500).json({ message: 'Erreur lors de la création de la commande' });
     }
+  },
 
-    const order = await orderService.confirmOrder(req.params.id, paymentIntentId);
-    res.json({ success: true, data: order });
-  } catch (error) {
-    next(error);
-  }
-};
+  // Mettre à jour le statut d'une commande
+  async updateOrderStatus(req: Request, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const { status } = req.body;
 
-export const getOrders = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orders = await orderService.getOrders(req.user!.id, req.user!.role);
-    res.json({ success: true, data: orders });
-  } catch (error) {
-    next(error);
-  }
-};
+      // TODO: Implémenter la logique de mise à jour
+      const mockOrder = {
+        id: orderId,
+        status: status,
+        updatedAt: new Date().toISOString()
+      };
 
-export const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const order = await orderService.getOrderById(req.params.id, req.user!.id, req.user!.role);
-    if (!order) {
-      throw createError.notFound('Order not found');
+      res.json(mockOrder);
+    } catch (error) {
+      console.error('Erreur mise à jour statut:', error);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du statut' });
     }
-    res.json({ success: true, data: order });
-  } catch (error) {
-    next(error);
-  }
-};
+  },
 
-export const getSellerOrders = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orders = await orderService.getSellerOrders(req.user!.id);
-    res.json({ success: true, data: orders });
-  } catch (error) {
-    next(error);
-  }
-};
+  // Annuler une commande
+  async cancelOrder(req: Request, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user?.id;
 
-export const cancelOrder = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const order = await orderService.cancelOrder(req.params.id, req.user!.id);
-    res.json({ success: true, data: order });
-  } catch (error) {
-    next(error);
+      // TODO: Implémenter la logique d'annulation avec remboursement Stripe
+      res.json({ message: 'Commande annulée avec succès' });
+    } catch (error) {
+      console.error('Erreur annulation commande:', error);
+      res.status(500).json({ message: 'Erreur lors de l\'annulation de la commande' });
+    }
   }
 };

@@ -114,7 +114,7 @@ const cartSlice = createSlice({
           id: product.id,
           product,
           quantity: 1,
-          addedAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
         });
       }
       

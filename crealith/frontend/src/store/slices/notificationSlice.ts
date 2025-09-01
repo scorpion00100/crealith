@@ -15,6 +15,16 @@ const initialState: NotificationState = {
   error: null,
 };
 
+// Helper function to create notifications
+export const createNotification = (type: 'success' | 'error' | 'warning' | 'info', title: string, message: string): Notification => ({
+  id: Date.now().toString(),
+  type,
+  title,
+  message,
+  read: false,
+  createdAt: new Date().toISOString(),
+});
+
 export const fetchNotifications = createAsyncThunk(
   'notifications/fetchNotifications',
   async () => {
@@ -101,11 +111,14 @@ const notificationSlice = createSlice({
       })
       // deleteNotification
       .addCase(deleteNotification.fulfilled, (state, action) => {
-        const notification = state.notifications.find(n => n.id === action.payload);
-        if (notification && !notification.read) {
-          state.unreadCount = Math.max(0, state.unreadCount - 1);
+        const index = state.notifications.findIndex(n => n.id === action.payload);
+        if (index !== -1) {
+          const notification = state.notifications[index];
+          if (!notification.read) {
+            state.unreadCount = Math.max(0, state.unreadCount - 1);
+          }
+          state.notifications.splice(index, 1);
         }
-        state.notifications = state.notifications.filter(n => n.id !== action.payload);
       });
   },
 });

@@ -1,0 +1,32 @@
+/* ========================================
+   STYLES PRINCIPAUX - CREALITH MARKETPLACE
+   ======================================== */
+
+/* Import des variables CSS */
+@import './crealith.css';
+
+/* Import des composants */
+@import './components/header.css';
+@import './components/product-card.css';
+@import './components/product-grid.css';
+@import './components/product-upload.css';
+@import './components/seller-stats.css';
+@import './components/buttons.css';
+@import './components/footer.css';
+@import './components/user-menu.css';
+@import './components/notifications.css';
+
+/* Import des pages */
+@import './pages/home.css';
+@import './pages/catalog.css';
+@import './pages/product-detail.css';
+@import './pages/cart.css';
+@import './pages/favorites.css';
+@import './pages/dashboard.css';
+
+/* Import des pages d'authentification */
+@import './auth/login.css';
+@import './auth/register.css';
+
+/* Import des utilitaires */
+@import './utilities.css';
