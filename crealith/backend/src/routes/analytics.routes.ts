@@ -1,14 +1,19 @@
-import { Router } from 'express';
-import { authenticateToken, requireRole } from '../middleware/auth.middleware';
-import { AnalyticsController } from '../controllers/analytics.controller';
+import express from 'express';
+import { analyticsController } from '../controllers/analytics.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
 
-const router = Router();
-const analyticsController = new AnalyticsController();
+const router = express.Router();
 
-// Routes pour les vendeurs
-router.get('/seller', authenticateToken, requireRole(['SELLER', 'ADMIN']), analyticsController.getSellerAnalytics);
+// Routes protégées par authentification
+router.use(authMiddleware);
 
-// Routes pour les admins
-router.get('/admin', authenticateToken, requireRole(['ADMIN']), analyticsController.getAdminAnalytics);
+// Analytics vendeur
+router.get('/seller', analyticsController.getSellerAnalytics);
+
+// Analytics acheteur
+router.get('/buyer', analyticsController.getBuyerAnalytics);
+
+// Analytics globales (admin)
+router.get('/global', analyticsController.getGlobalAnalytics);
 
 export default router;

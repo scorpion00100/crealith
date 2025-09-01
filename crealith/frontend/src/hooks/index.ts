@@ -4,6 +4,10 @@ export { useProducts } from './useProducts';
 export { useCart } from './useCart';
 export { useUI } from './useUI';
 
+// Hooks de dashboard
+export { useOrders } from './useOrders';
+export { useAnalytics } from './useAnalytics';
+
 // Hooks utilitaires
 export { useLocalStorage } from './useLocalStorage';
 export { useDebounce } from './useDebounce';

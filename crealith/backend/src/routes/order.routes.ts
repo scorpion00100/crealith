@@ -1,27 +1,25 @@
-import { Router } from 'express';
-import * as orderController from '../controllers/order.controller';
-import { requireAuth, requireSeller } from '../middleware/auth.middleware';
+import express from 'express';
+import { orderController } from '../controllers/order.controller';
+import { authMiddleware } from '../middleware/auth.middleware';
 
-const router = Router();
+const router = express.Router();
 
-// Toutes les routes nécessitent une authentification
-router.use(requireAuth);
+// Routes protégées par authentification
+router.use(authMiddleware);
 
-// Routes du panier
-router.post('/cart/add', orderController.addToCart);
-router.get('/cart', orderController.getCart);
-router.put('/cart/:id', orderController.updateCartItem);
-router.delete('/cart/:id', orderController.removeFromCart);
-router.delete('/cart', orderController.clearCart);
+// Récupérer les commandes de l'utilisateur
+router.get('/', orderController.getUserOrders);
 
-// Routes des commandes
-router.post('/orders', orderController.createOrder);
-router.post('/orders/:id/confirm', orderController.confirmOrder);
-router.get('/orders', orderController.getOrders);
-router.get('/orders/:id', orderController.getOrderById);
-router.delete('/orders/:id', orderController.cancelOrder);
+// Récupérer une commande spécifique
+router.get('/:orderId', orderController.getOrderById);
 
-// Routes pour les vendeurs
-router.get('/seller/orders', requireSeller, orderController.getSellerOrders);
+// Créer une nouvelle commande
+router.post('/', orderController.createOrder);
+
+// Mettre à jour le statut d'une commande
+router.patch('/:orderId/status', orderController.updateOrderStatus);
+
+// Annuler une commande
+router.delete('/:orderId', orderController.cancelOrder);
 
 export default router;

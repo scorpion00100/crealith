@@ -1,6 +1,6 @@
 // Types pour l'application Crealith
 export interface Product {
-  id: string; // Changé de number à string pour correspondre aux données
+  id: string;
   title: string;
   author: string;
   price: string;
@@ -8,14 +8,13 @@ export interface Product {
   rating: number;
   reviews: number;
   downloads?: number;
-  image: string; // Ajouté pour ProductCard
+  image: string;
   tags?: string[];
   popular?: boolean;
   new?: boolean;
   trending?: boolean;
   discount?: number;
   description?: string;
-  // Ajouté pour compatibilité avec productSlice
   shortDescription?: string;
   thumbnailUrl?: string;
   fileUrl?: string;
@@ -43,6 +42,10 @@ export interface Product {
   totalSales?: number;
   totalReviews?: number;
   hasPurchased?: boolean;
+  // Propriétés pour compatibilité
+  salesCount?: number;
+  reviewCount?: number;
+  status?: string;
 }
 
 export interface Category {
