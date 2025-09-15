@@ -1,0 +1,233 @@
+/* Styles pour la validation des formulaires d'authentification */
+
+/* Champs avec erreur */
+.form-input.error {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.1) !important;
+  background-color: rgba(244, 63, 94, 0.02);
+}
+
+.form-input.error:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2) !important;
+}
+
+/* Messages d'erreur */
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(244, 63, 94, 0.05);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  border-radius: 0.5rem;
+  color: #f43f5e;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: slideIn 0.2s ease-out;
+}
+
+.error-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* Animation pour l'apparition des erreurs */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Styles pour les champs valides */
+.form-input.valid {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+}
+
+.form-input.valid:focus {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Indicateur de validation */
+.validation-indicator {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+}
+
+.validation-indicator.valid {
+  color: #10b981;
+}
+
+.validation-indicator.error {
+  color: #f43f5e;
+}
+
+/* Styles pour les messages de succès */
+.field-success {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 0.5rem;
+  color: #10b981;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: slideIn 0.2s ease-out;
+}
+
+/* Styles pour les indicateurs de force du mot de passe */
+.password-strength {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.password-strength.weak {
+  background-color: rgba(244, 63, 94, 0.05);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  color: #f43f5e;
+}
+
+.password-strength.medium {
+  background-color: rgba(245, 158, 11, 0.05);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.password-strength.strong {
+  background-color: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+/* Barre de progression pour la force du mot de passe */
+.password-strength-bar {
+  width: 100%;
+  height: 0.25rem;
+  background-color: #e5e7eb;
+  border-radius: 0.125rem;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.password-strength-fill {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 0.125rem;
+}
+
+.password-strength-fill.weak {
+  width: 33%;
+  background-color: #f43f5e;
+}
+
+.password-strength-fill.medium {
+  width: 66%;
+  background-color: #f59e0b;
+}
+
+.password-strength-fill.strong {
+  width: 100%;
+  background-color: #10b981;
+}
+
+/* Styles pour les tooltips d'aide */
+.help-tooltip {
+  position: relative;
+  display: inline-block;
+  margin-left: 0.5rem;
+  cursor: help;
+}
+
+.help-tooltip .tooltip-content {
+  visibility: hidden;
+  width: 200px;
+  background-color: #1f2937;
+  color: #f9fafb;
+  text-align: center;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -100px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.help-tooltip:hover .tooltip-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Styles pour les messages d'erreur globaux */
+.global-error {
+  background-color: rgba(244, 63, 94, 0.05);
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  color: #f43f5e;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideIn 0.2s ease-out;
+}
+
+.global-error .error-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Styles pour les messages de succès globaux */
+.global-success {
+  background-color: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  color: #10b981;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  animation: slideIn 0.2s ease-out;
+}
+
+.global-success .success-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .field-error,
+  .field-success {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.625rem;
+  }
+
+  .help-tooltip .tooltip-content {
+    width: 150px;
+    margin-left: -75px;
+    font-size: 0.8125rem;
+  }
+}

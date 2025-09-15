@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppSelector } from '@/store';
+import { SearchBar } from '@/components/ui/SearchBar';
 import {
   Home,
   Grid3X3,
@@ -77,14 +78,11 @@ export const Header: React.FC = () => {
 
           {/* Search Bar - Section centrale maximisée */}
           <div className="hidden lg:flex flex-1 max-w-4xl mx-8">
-            <div className="relative w-full group">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary-400 transition-colors duration-300" />
-              <input
-                type="text"
-                placeholder="Rechercher des créations, templates, illustrations, UI kits, icônes, photos..."
-                className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 shadow-soft focus:shadow-medium text-base"
-              />
-            </div>
+            <SearchBar
+              placeholder="Rechercher des créations, templates, illustrations, UI kits, icônes, photos..."
+              showFilters={true}
+              className="w-full"
+            />
           </div>
 
           {/* Actions - Section droite compacte */}
@@ -206,14 +204,11 @@ export const Header: React.FC = () => {
 
         {/* Mobile Search */}
         <div className="lg:hidden pb-4">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500 group-focus-within:text-primary-400 transition-colors duration-300" />
-            <input
-              type="text"
-              placeholder="Rechercher des créations..."
-              className="w-full pl-12 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-2xl text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-300 shadow-soft focus:shadow-medium"
-            />
-          </div>
+          <SearchBar
+            placeholder="Rechercher des créations..."
+            showFilters={false}
+            className="w-full"
+          />
         </div>
 
         {/* Mobile Menu */}

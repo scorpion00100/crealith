@@ -1,76 +1,64 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { analyticsService, SalesAnalytics, AdminAnalytics } from '@/services/analytics.service';
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface AnalyticsState {
-  sellerAnalytics: SalesAnalytics | null;
-  adminAnalytics: AdminAnalytics | null;
-  isLoading: boolean;
-  error: string | null;
+  pageViews: number;
+  userInteractions: number;
+  searchQueries: string[];
+  popularProducts: string[];
 }
 
 const initialState: AnalyticsState = {
-  sellerAnalytics: null,
-  adminAnalytics: null,
-  isLoading: false,
-  error: null,
+  pageViews: 0,
+  userInteractions: 0,
+  searchQueries: [],
+  popularProducts: [],
 };
-
-export const fetchSellerAnalytics = createAsyncThunk(
-  'analytics/fetchSellerAnalytics',
-  async (period: 'week' | 'month' | 'year' = 'month') => {
-    return await analyticsService.getSellerAnalytics(period);
-  }
-);
-
-export const fetchAdminAnalytics = createAsyncThunk(
-  'analytics/fetchAdminAnalytics',
-  async (period: 'week' | 'month' | 'year' = 'month') => {
-    return await analyticsService.getAdminAnalytics(period);
-  }
-);
 
 const analyticsSlice = createSlice({
   name: 'analytics',
   initialState,
   reducers: {
-    clearError: (state) => {
-      state.error = null;
+    incrementPageView: (state) => {
+      state.pageViews += 1;
     },
-    clearAnalytics: (state) => {
-      state.sellerAnalytics = null;
-      state.adminAnalytics = null;
+    incrementUserInteraction: (state) => {
+      state.userInteractions += 1;
     },
-  },
-  extraReducers: (builder) => {
-    builder
-      // fetchSellerAnalytics
-      .addCase(fetchSellerAnalytics.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchSellerAnalytics.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.sellerAnalytics = action.payload;
-      })
-      .addCase(fetchSellerAnalytics.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch seller analytics';
-      })
-      // fetchAdminAnalytics
-      .addCase(fetchAdminAnalytics.pending, (state) => {
-        state.isLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchAdminAnalytics.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.adminAnalytics = action.payload;
-      })
-      .addCase(fetchAdminAnalytics.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.error.message || 'Failed to fetch admin analytics';
-      });
+    addSearchQuery: (state, action: PayloadAction<string>) => {
+      const query = action.payload.toLowerCase().trim();
+      if (query && !state.searchQueries.includes(query)) {
+        state.searchQueries.unshift(query);
+        // Garder seulement les 10 dernières recherches
+        if (state.searchQueries.length > 10) {
+          state.searchQueries = state.searchQueries.slice(0, 10);
+        }
+      }
+    },
+    addPopularProduct: (state, action: PayloadAction<string>) => {
+      const productId = action.payload;
+      if (!state.popularProducts.includes(productId)) {
+        state.popularProducts.unshift(productId);
+        // Garder seulement les 10 produits les plus populaires
+        if (state.popularProducts.length > 10) {
+          state.popularProducts = state.popularProducts.slice(0, 10);
+        }
+      }
+    },
+    resetAnalytics: (state) => {
+      state.pageViews = 0;
+      state.userInteractions = 0;
+      state.searchQueries = [];
+      state.popularProducts = [];
+    },
   },
 });
 
-export const { clearError, clearAnalytics } = analyticsSlice.actions;
+export const {
+  incrementPageView,
+  incrementUserInteraction,
+  addSearchQuery,
+  addPopularProduct,
+  resetAnalytics,
+} = analyticsSlice.actions;
+
 export default analyticsSlice.reducer;

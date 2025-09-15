@@ -11,7 +11,7 @@ export class NotificationController {
 
   getUserNotifications = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const notifications = await this.notificationService.getUserNotifications(userId);
       
       res.json({
@@ -28,7 +28,7 @@ export class NotificationController {
 
   getUnreadCount = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const count = await this.notificationService.getUnreadCount(userId);
       
       res.json({
@@ -45,7 +45,7 @@ export class NotificationController {
 
   markAsRead = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const { id } = req.params;
 
       await this.notificationService.markAsRead(id, userId);
@@ -64,7 +64,7 @@ export class NotificationController {
 
   markAllAsRead = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       await this.notificationService.markAllAsRead(userId);
       
@@ -82,7 +82,7 @@ export class NotificationController {
 
   deleteNotification = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const { id } = req.params;
 
       await this.notificationService.deleteNotification(id, userId);

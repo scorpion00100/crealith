@@ -1,4 +1,4 @@
-import { prisma } from '../app';
+import prisma from '../prisma';
 import { createError } from '../utils/errors';
 import { Review, Prisma } from '@prisma/client';
 

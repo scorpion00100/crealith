@@ -13,7 +13,7 @@ export const createReview = async (req: Request, res: Response, next: NextFuncti
     }
 
     const review = await reviewService.createReview({
-      userId: req.user!.id,
+      userId: req.user!.userId,
       productId,
       rating: parseInt(rating),
       comment,
@@ -33,7 +33,7 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
     if (rating !== undefined) updateData.rating = parseInt(rating);
     if (comment !== undefined) updateData.comment = comment;
 
-    const review = await reviewService.updateReview(req.params.id, req.user!.id, updateData);
+    const review = await reviewService.updateReview(req.params.id, req.user!.userId, updateData);
     res.json({ success: true, data: review });
   } catch (error) {
     next(error);
@@ -42,7 +42,7 @@ export const updateReview = async (req: Request, res: Response, next: NextFuncti
 
 export const deleteReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await reviewService.deleteReview(req.params.id, req.user!.id);
+    await reviewService.deleteReview(req.params.id, req.user!.userId);
     res.json({ success: true, message: 'Review deleted successfully' });
   } catch (error) {
     next(error);
@@ -72,7 +72,7 @@ export const getProductRatingStats = async (req: Request, res: Response, next: N
 
 export const getUserReviews = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const reviews = await reviewService.getUserReviews(req.user!.id);
+    const reviews = await reviewService.getUserReviews(req.user!.userId);
     res.json({ success: true, data: reviews });
   } catch (error) {
     next(error);
@@ -81,7 +81,7 @@ export const getUserReviews = async (req: Request, res: Response, next: NextFunc
 
 export const hasUserReviewed = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hasReviewed = await reviewService.hasUserReviewed(req.user!.id, req.params.productId);
+    const hasReviewed = await reviewService.hasUserReviewed(req.user!.userId, req.params.productId);
     res.json({ success: true, data: { hasReviewed } });
   } catch (error) {
     next(error);
@@ -90,7 +90,7 @@ export const hasUserReviewed = async (req: Request, res: Response, next: NextFun
 
 export const hasUserPurchased = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const hasPurchased = await reviewService.hasUserPurchased(req.user!.id, req.params.productId);
+    const hasPurchased = await reviewService.hasUserPurchased(req.user!.userId, req.params.productId);
     res.json({ success: true, data: { hasPurchased } });
   } catch (error) {
     next(error);

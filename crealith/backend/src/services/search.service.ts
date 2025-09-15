@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+cd import prisma from '../prisma';
 
 export interface SearchFilters {
   query?: string;
@@ -213,6 +211,13 @@ export class SearchService {
       return [];
     }
 
+    const priceFilter = product.price && typeof product.price === 'number' ? {
+      price: {
+        gte: product.price * 0.7,
+        lte: product.price * 1.3
+      }
+    } : {};
+
     const relatedProducts = await prisma.product.findMany({
       where: {
         id: { not: productId },
@@ -220,12 +225,7 @@ export class SearchService {
         OR: [
           { categoryId: product.categoryId },
           { tags: { hasSome: product.tags } },
-          {
-            price: {
-              gte: product.price * 0.7,
-              lte: product.price * 1.3
-            }
-          }
+          priceFilter
         ]
       },
       include: {

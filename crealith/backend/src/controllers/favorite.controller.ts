@@ -10,7 +10,7 @@ export class FavoriteController {
 
   getUserFavorites = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const favorites = await this.favoriteService.getUserFavorites(userId);
       
       res.json({
@@ -27,7 +27,7 @@ export class FavoriteController {
 
   addToFavorites = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const { productId } = req.body;
 
       if (!productId) {
@@ -53,7 +53,7 @@ export class FavoriteController {
 
   removeFromFavorites = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const { productId } = req.params;
 
       await this.favoriteService.removeFromFavorites(userId, productId);
@@ -72,7 +72,7 @@ export class FavoriteController {
 
   checkIfFavorite = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const { productId } = req.params;
 
       const isFavorite = await this.favoriteService.isFavorite(userId, productId);

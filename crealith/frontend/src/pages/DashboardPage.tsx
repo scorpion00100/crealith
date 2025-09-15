@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAppDispatch } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
 
 export const DashboardPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
@@ -19,7 +19,16 @@ export const DashboardPage: React.FC = () => {
       navigate('/login?redirect=/dashboard');
       return;
     }
-  }, [isAuthenticated, navigate, dispatch]);
+
+    // Redirection automatique vers les interfaces spécialisées
+    if (user?.role === 'SELLER') {
+      // Rediriger automatiquement vers le dashboard vendeur
+      navigate('/seller-dashboard');
+    } else if (user?.role === 'BUYER') {
+      // Rediriger automatiquement vers le dashboard acheteur
+      navigate('/buyer-dashboard');
+    }
+  }, [isAuthenticated, navigate, dispatch, user]);
 
   if (!isAuthenticated || !user) {
     return null;
@@ -40,6 +49,15 @@ export const DashboardPage: React.FC = () => {
       default:
         return 'Utilisateur';
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    dispatch(addNotification({
+      type: 'success',
+      message: 'Déconnexion réussie',
+    }));
+    navigate('/');
   };
 
   const renderOverview = () => (
@@ -92,6 +110,27 @@ export const DashboardPage: React.FC = () => {
         <button className="btn btn-outline" onClick={() => setActiveTab('profile')}>
           👤 Mon profil
         </button>
+
+        {/* Boutons d'accès aux nouvelles interfaces */}
+        {user.role === 'BUYER' && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate('/buyer-dashboard')}
+            style={{ marginTop: '1rem' }}
+          >
+            🛒 Interface Acheteur Avancée
+          </button>
+        )}
+
+        {user.role === 'SELLER' && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => navigate('/seller-dashboard')}
+            style={{ marginTop: '1rem' }}
+          >
+            📊 Interface Vendeur Avancée
+          </button>
+        )}
       </div>
     </div>
   );
@@ -148,6 +187,15 @@ export const DashboardPage: React.FC = () => {
         </button>
         <button className="btn btn-outline" onClick={() => setActiveTab('orders')}>
           📋 Commandes récentes
+        </button>
+
+        {/* Bouton vers l'interface vendeur avancée */}
+        <button
+          className="btn btn-secondary"
+          onClick={() => navigate('/seller-dashboard')}
+          style={{ marginTop: '1rem' }}
+        >
+          🚀 Interface Vendeur Complète
         </button>
       </div>
     </div>
@@ -399,8 +447,74 @@ export const DashboardPage: React.FC = () => {
                   {getRoleName()}
                 </div>
               </div>
+              <div className="dashboard-user-actions">
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={handleLogout}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #e5e7eb',
+                    color: '#6b7280',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  🚪 Déconnexion
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Notification des nouvelles interfaces */}
+      <div className="dashboard-notification" style={{
+        background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+        color: 'white',
+        padding: '1rem',
+        margin: '1rem',
+        borderRadius: '8px',
+        textAlign: 'center'
+      }}>
+        <h3 style={{ margin: '0 0 0.5rem 0' }}>🎉 Nouvelles Interfaces Disponibles !</h3>
+        <p style={{ margin: '0 0 1rem 0' }}>
+          Découvrez nos interfaces avancées spécialement conçues pour votre rôle
+        </p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {user.role === 'BUYER' && (
+            <button
+              className="btn btn-light"
+              onClick={() => navigate('/buyer-dashboard')}
+              style={{
+                background: 'white',
+                color: '#6366f1',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              🛒 Interface Acheteur Avancée
+            </button>
+          )}
+          {user.role === 'SELLER' && (
+            <button
+              className="btn btn-light"
+              onClick={() => navigate('/seller-dashboard')}
+              style={{
+                background: 'white',
+                color: '#6366f1',
+                border: 'none',
+                padding: '0.5rem 1rem',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              📊 Interface Vendeur Avancée
+            </button>
+          )}
         </div>
       </div>
 

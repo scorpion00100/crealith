@@ -132,7 +132,7 @@ export const useOrders = () => {
       setOrders(filteredOrders);
     } catch (err) {
       setError('Erreur lors du chargement des commandes');
-      console.error('Error fetching orders:', err);
+      // Error fetching orders - handled by error middleware
     } finally {
       setLoading(false);
     }

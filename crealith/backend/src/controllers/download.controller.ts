@@ -1,14 +1,13 @@
 import { Request, Response } from 'express';
 import { DownloadService } from '../services/download.service';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import { createError } from '../utils/errors';
 
 export class DownloadController {
   // Générer une URL de téléchargement sécurisée
-  static async generateDownloadUrl(req: AuthenticatedRequest, res: Response) {
+  static async generateDownloadUrl(req: Request, res: Response) {
     try {
       const { productId } = req.params;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       const downloadUrl = await DownloadService.generateSecureDownloadUrl(
         productId,
@@ -72,9 +71,9 @@ export class DownloadController {
   }
 
   // Obtenir l'historique des téléchargements
-  static async getDownloadHistory(req: AuthenticatedRequest, res: Response) {
+  static async getDownloadHistory(req: Request, res: Response) {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const downloads = await DownloadService.getUserDownloadHistory(userId);
 
       res.json({
@@ -90,10 +89,10 @@ export class DownloadController {
   }
 
   // Vérifier si un utilisateur peut télécharger un produit
-  static async checkDownloadPermission(req: AuthenticatedRequest, res: Response) {
+  static async checkDownloadPermission(req: Request, res: Response) {
     try {
       const { productId } = req.params;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       const canDownload = await DownloadService.canDownload(productId, userId);
 
@@ -113,9 +112,9 @@ export class DownloadController {
   }
 
   // Obtenir les statistiques de téléchargement pour un vendeur
-  static async getSellerDownloadStats(req: AuthenticatedRequest, res: Response) {
+  static async getSellerDownloadStats(req: Request, res: Response) {
     try {
-      const sellerId = req.user!.id;
+      const sellerId = req.user!.userId;
       const stats = await DownloadService.getSellerDownloadStats(sellerId);
 
       res.json({
@@ -131,10 +130,10 @@ export class DownloadController {
   }
 
   // Télécharger directement un fichier (pour les admins)
-  static async directDownload(req: AuthenticatedRequest, res: Response) {
+  static async directDownload(req: Request, res: Response) {
     try {
       const { productId } = req.params;
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
 
       // Vérifier que l'utilisateur est admin ou propriétaire du produit
       if (req.user!.role !== 'ADMIN') {

@@ -9,7 +9,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
+      // Error reading localStorage - return default value
       return initialValue;
     }
   });
@@ -22,7 +22,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
         window.localStorage.setItem(key, JSON.stringify(valueToStore));
       }
     } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
+      // Error setting localStorage - value not saved
     }
   };
 
@@ -33,7 +33,7 @@ export const useLocalStorage = <T>(key: string, initialValue: T) => {
         window.localStorage.removeItem(key);
       }
     } catch (error) {
-      console.error(`Error removing localStorage key "${key}":`, error);
+      // Error removing localStorage - key not removed
     }
   };
 

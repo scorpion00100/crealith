@@ -32,16 +32,16 @@ interface ProductCardProps {
   isFavorite?: boolean;
 }
 
-const getStatusColor = (isActive?: boolean) => {
-  if (isActive === undefined) return 'bg-slate-700 text-slate-300 border-slate-600';
-  return isActive
+const getStatusClassesFromStatus = (status?: string) => {
+  if (!status) return 'bg-slate-700 text-slate-300 border-slate-600';
+  return status === 'active' || status === 'published'
     ? 'bg-success-500/20 text-success-300 border-success-500/30'
-    : 'bg-error-500/20 text-error-300 border-error-500/30';
+    : 'bg-warning-500/20 text-warning-300 border-warning-500/30';
 };
 
-const getStatusText = (isActive?: boolean) => {
-  if (isActive === undefined) return 'Inconnu';
-  return isActive ? 'Actif' : 'Inactif';
+const getStatusLabelFromStatus = (status?: string) => {
+  if (!status) return 'Inconnu';
+  return status === 'active' || status === 'published' ? 'Publié' : 'Brouillon';
 };
 
 export const ProductCard: React.FC<ProductCardProps> = ({
@@ -86,9 +86,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           )}
           {/* Status Badge */}
-          <div className={`absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${getStatusColor(product.isActive ?? false)}`}>
-            {/* getStatusIcon is not defined in the original file, so it's removed */}
-            {product.isActive ? 'Actif' : 'Inactif'}
+          <div className={`absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${getStatusClassesFromStatus((product as any).status)}`}>
+            {getStatusLabelFromStatus((product as any).status)}
           </div>
         </div>
 
@@ -162,8 +161,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
           <div className="flex items-center space-x-2">
             <Star className="w-4 h-4 text-warning-400 fill-current" />
-            <span className="font-bold text-slate-300">{product.rating.toFixed(1)}</span>
-            <span>({product.reviews || product.reviewCount || 0})</span>
+            <span className="font-bold text-slate-300">{(product.rating || 0).toFixed(1)}</span>
+            <span>({product.reviewCount || (Array.isArray(product.reviews) ? product.reviews.length : 0)})</span>
           </div>
           <div className="flex items-center space-x-2">
             <Download className="w-4 h-4 text-secondary-400" />

@@ -1,8 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Product } from '@/types';
-import { useAppSelector } from '@/store';
+import { useAppSelector, useAppDispatch } from '@/store';
+import { addToCartAsync } from '@/store/slices/cartSlice';
+import { addNotification } from '@/store/slices/uiSlice';
+import { toggleFavorite } from '@/store/slices/favoritesSlice';
+import { useAuth } from '@/hooks/useAuth';
 import '../styles/pages/home.css';
 import {
   ArrowRight,
@@ -26,7 +30,9 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const { isAuthenticated } = useAppSelector(state => state.auth);
+  const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { isAuthenticated } = useAuth();
   const { items: products } = useAppSelector(state => state.products);
 
   // Mock data pour les produits populaires
@@ -81,6 +87,65 @@ export const HomePage: React.FC = () => {
       author: 'IllustratorPro'
     }
   ];
+
+  // Handlers pour les actions produits
+  const handleViewProduct = (productId: string) => {
+    navigate(`/product/${productId}`);
+  };
+
+  const handleAddToCart = async (productId: string) => {
+    if (!isAuthenticated) {
+      dispatch(addNotification({
+        type: 'warning',
+        message: 'Connectez-vous pour ajouter au panier',
+        duration: 4000
+      }));
+      navigate('/login?redirect=/');
+      return;
+    }
+
+    try {
+      await dispatch(addToCartAsync({ productId, quantity: 1 })).unwrap();
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Produit ajouté au panier !',
+        duration: 3000
+      }));
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Erreur lors de l\'ajout au panier',
+        duration: 4000
+      }));
+    }
+  };
+
+  const handleToggleFavorite = async (productId: string) => {
+    if (!isAuthenticated) {
+      dispatch(addNotification({
+        type: 'warning',
+        message: 'Connectez-vous pour ajouter aux favoris',
+        duration: 4000
+      }));
+      navigate('/login?redirect=/');
+      return;
+    }
+
+    try {
+      await dispatch(toggleFavorite(productId)).unwrap();
+      dispatch(addNotification({
+        type: 'success',
+        message: 'Favoris mis à jour !',
+        duration: 3000
+      }));
+    } catch (error) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Erreur lors de la gestion des favoris',
+        duration: 4000
+      }));
+    }
+  };
 
   return (
     <div className="min-h-screen text-gray-100">
@@ -201,8 +266,9 @@ export const HomePage: React.FC = () => {
                 <ProductCard
                   product={product}
                   variant="buyer"
-                  onView={(id) => console.log('View product:', id)}
-                  onAddToCart={(id) => console.log('Add to cart:', id)}
+                  onView={handleViewProduct}
+                  onAddToCart={handleAddToCart}
+                  onAddToFavorites={handleToggleFavorite}
                 />
               </div>
             ))}

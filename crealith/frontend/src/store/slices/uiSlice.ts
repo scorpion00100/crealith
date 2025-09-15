@@ -1,66 +1,36 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface Notification {
+export interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
-  timestamp: number;
   duration?: number;
+  timestamp: number;
 }
 
-interface UIState {
-  isLoading: boolean;
-  isMobileMenuOpen: boolean;
-  searchQuery: string;
+interface UiState {
   notifications: Notification[];
+  sidebarOpen: boolean;
   theme: 'light' | 'dark';
-  showSearchResults: boolean;
-  currentPage: string;
-  breadcrumbs: Array<{ label: string; path: string }>;
+  loading: boolean;
 }
 
-const initialState: UIState = {
-  isLoading: false,
-  isMobileMenuOpen: false,
-  searchQuery: '',
+const initialState: UiState = {
   notifications: [],
-  theme: 'light',
-  showSearchResults: false,
-  currentPage: 'home',
-  breadcrumbs: [],
+  sidebarOpen: false,
+  theme: 'dark',
+  loading: false,
 };
 
 const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
-    },
-    toggleMobileMenu: (state) => {
-      state.isMobileMenuOpen = !state.isMobileMenuOpen;
-    },
-    closeMobileMenu: (state) => {
-      state.isMobileMenuOpen = false;
-    },
-    setSearchQuery: (state, action: PayloadAction<string>) => {
-      state.searchQuery = action.payload;
-      state.showSearchResults = action.payload.length > 0;
-    },
-    clearSearchQuery: (state) => {
-      state.searchQuery = '';
-      state.showSearchResults = false;
-    },
-    addNotification: (state, action: PayloadAction<{
-      type: 'success' | 'error' | 'warning' | 'info';
-      message: string;
-      duration?: number;
-    }>) => {
+    addNotification: (state, action: PayloadAction<Omit<Notification, 'id' | 'timestamp'>>) => {
       const notification: Notification = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        timestamp: Date.now(),
-        duration: action.payload.duration || 4000,
         ...action.payload,
+        id: `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: Date.now(),
       };
       state.notifications.push(notification);
     },
@@ -70,34 +40,29 @@ const uiSlice = createSlice({
     clearNotifications: (state) => {
       state.notifications = [];
     },
+    toggleSidebar: (state) => {
+      state.sidebarOpen = !state.sidebarOpen;
+    },
+    setSidebarOpen: (state, action: PayloadAction<boolean>) => {
+      state.sidebarOpen = action.payload;
+    },
     setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
       state.theme = action.payload;
     },
-    setCurrentPage: (state, action: PayloadAction<string>) => {
-      state.currentPage = action.payload;
-    },
-    setBreadcrumbs: (state, action: PayloadAction<Array<{ label: string; path: string }>>) => {
-      state.breadcrumbs = action.payload;
-    },
-    setShowSearchResults: (state, action: PayloadAction<boolean>) => {
-      state.showSearchResults = action.payload;
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
     },
   },
 });
 
 export const {
-  setLoading,
-  toggleMobileMenu,
-  closeMobileMenu,
-  setSearchQuery,
-  clearSearchQuery,
   addNotification,
   removeNotification,
   clearNotifications,
+  toggleSidebar,
+  setSidebarOpen,
   setTheme,
-  setCurrentPage,
-  setBreadcrumbs,
-  setShowSearchResults,
+  setLoading,
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

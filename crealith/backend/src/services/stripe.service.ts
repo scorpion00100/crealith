@@ -1,11 +1,9 @@
 import Stripe from 'stripe';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prisma';
 import { createError } from '../utils/errors';
 
-const prisma = new PrismaClient();
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia'
+  apiVersion: '2023-10-16'
 });
 
 export interface PaymentIntentData {
@@ -40,6 +38,19 @@ export interface StripeAccountData {
 }
 
 export class StripeService {
+  // Vérifier la signature du webhook
+  static verifyWebhookSignature(payload: any, signature: string): Stripe.Event {
+    try {
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        throw new Error('STRIPE_WEBHOOK_SECRET not configured');
+      }
+
+      return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (error) {
+      throw new Error(`Webhook signature verification failed: ${error}`);
+    }
+  }
   // Créer un PaymentIntent pour une commande
   static async createPaymentIntent(data: PaymentIntentData): Promise<Stripe.PaymentIntent> {
     try {
@@ -189,6 +200,35 @@ export class StripeService {
       console.error('Erreur lors du traitement du webhook:', error);
       throw error;
     }
+  }
+
+  // Gérer le succès d'un paiement (alias pour compatibilité)
+  static async handlePaymentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    return this.handlePaymentSuccess(paymentIntent);
+  }
+
+  // Gérer l'échec d'un paiement (alias pour compatibilité)
+  static async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent): Promise<void> {
+    return this.handlePaymentFailure(paymentIntent);
+  }
+
+  // Gérer la session de checkout complétée
+  static async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    console.log('Checkout session completed:', session.id);
+    // Traiter la session de checkout complétée
+    // Mettre à jour la commande, envoyer des emails, etc.
+  }
+
+  // Gérer le paiement de facture réussi
+  static async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<void> {
+    console.log('Invoice payment succeeded:', invoice.id);
+    // Traiter le paiement de facture réussi
+  }
+
+  // Gérer l'échec du paiement de facture
+  static async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
+    console.log('Invoice payment failed:', invoice.id);
+    // Traiter l'échec du paiement de facture
   }
 
   // Gérer le succès d'un paiement
@@ -352,3 +392,6 @@ export class StripeService {
     }
   }
 }
+
+// Instance exportée du service
+export const stripeService = new StripeService();

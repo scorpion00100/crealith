@@ -1,88 +1,59 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import { verifyAccessToken } from '../utils/jwt';
+import { createError } from '../utils/errors';
+import prisma from '../prisma';
 
-const prisma = new PrismaClient();
-
-export interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: 'BUYER' | 'SELLER' | 'ADMIN';
-  };
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        userId: string;
+        email: string;
+        role: string;
+      };
+    }
+  }
 }
 
-// Middleware d'authentification
-export const authenticateToken = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Token d\'accès requis' 
-      });
+      throw createError.unauthorized('Access token required');
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    
-    // Vérifier que l'utilisateur existe toujours
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, role: true, isActive: true }
-    });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Utilisateur invalide ou désactivé' 
-      });
-    }
-
-    req.user = {
-      id: user.id,
-      email: user.email,
-      role: user.role
-    };
-
+    const payload = verifyAccessToken(token);
+    req.user = payload;
     next();
   } catch (error) {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Token invalide' 
-    });
+    next(createError.unauthorized('Invalid access token'));
   }
 };
 
-// Middleware RBAC pour vérifier les rôles
-export const requireRole = (roles: ('BUYER' | 'SELLER' | 'ADMIN')[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const requireRole = (roles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'Authentification requise' 
-      });
+      return next(createError.unauthorized('Authentication required'));
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Permissions insuffisantes' 
-      });
+      return next(createError.forbidden('Insufficient permissions'));
     }
 
     next();
   };
 };
 
+export const requireAuth = authenticateToken;
+export const requireBuyer = requireRole(['BUYER', 'SELLER', 'ADMIN']);
+export const requireSeller = requireRole(['SELLER', 'ADMIN']);
+export const requireAdmin = requireRole(['ADMIN']);
+
 // Middleware pour vérifier la propriété (seul le propriétaire peut modifier)
 export const requireOwnership = (resourceType: 'product' | 'order' | 'review') => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ 
         success: false, 
@@ -128,7 +99,7 @@ export const requireOwnership = (resourceType: 'product' | 'order' | 'review') =
       }
 
       // Vérifier la propriété
-      if (resource.userId !== req.user.id) {
+      if (resource.userId !== req.user.userId) {
         return res.status(403).json({ 
           success: false, 
           message: 'Accès non autorisé' 
@@ -147,7 +118,7 @@ export const requireOwnership = (resourceType: 'product' | 'order' | 'review') =
 
 // Middleware pour vérifier que l'utilisateur a acheté le produit (pour les reviews)
 export const requirePurchase = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -163,7 +134,7 @@ export const requirePurchase = async (
   try {
     const purchase = await prisma.order.findFirst({
       where: {
-        userId: req.user.id,
+        userId: req.user.userId,
         status: 'PAID',
         items: {
           some: {

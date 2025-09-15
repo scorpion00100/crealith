@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { AnalyticsData, ChartData } from '@/components/ui/AnalyticsChart';
+import { analyticsService } from '@/services/analytics.service';
 
 export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
   const { user, isAuthenticated } = useAuth();
@@ -9,42 +10,10 @@ export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
 
-  // Mock data pour les vendeurs
-  const mockSellerData: AnalyticsData = {
-    totalRevenue: 1247.85,
-    totalSales: 45,
-    totalDownloads: 127,
-    averageRating: 4.6,
-    revenueChange: 12.5,
-    salesChange: 8.3,
-    downloadsChange: 15.7,
-    ratingChange: 2.1,
-    revenueData: [
-      { label: 'Jan', value: 1200 },
-      { label: 'Fév', value: 1400 },
-      { label: 'Mar', value: 1100 },
-      { label: 'Avr', value: 1600 },
-      { label: 'Mai', value: 1800 },
-      { label: 'Jun', value: 2200 }
-    ],
-    salesData: [
-      { label: 'Templates', value: 25 },
-      { label: 'Graphiques', value: 15 },
-      { label: 'E-books', value: 5 }
-    ],
-    topProducts: [
-      { label: 'Template WordPress', value: 15 },
-      { label: 'Pack Icons SVG', value: 12 },
-      { label: 'E-book Marketing', value: 8 },
-      { label: 'Template E-commerce', value: 6 },
-      { label: 'Pack Illustrations', value: 4 }
-    ]
-  };
-
   // Mock data pour les acheteurs
   const mockBuyerData: AnalyticsData = {
-    totalRevenue: 0, // Les acheteurs ne génèrent pas de revenus
-    totalSales: 12, // Nombre d'achats
+    totalRevenue: 0,
+    totalSales: 12,
     totalDownloads: 28,
     averageRating: 4.7,
     revenueChange: 0,
@@ -73,6 +42,36 @@ export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
     ]
   };
 
+  const mapSellerAnalyticsToChart = (seller: any): AnalyticsData => {
+    const revenueData: ChartData[] = (seller.salesByMonth || []).map((m: any) => ({
+      label: m.month,
+      value: Math.round(m.revenue)
+    }));
+    const salesData: ChartData[] = (seller.salesByMonth || []).map((m: any) => ({
+      label: m.month,
+      value: Math.round(m.sales)
+    }));
+
+    const topProducts: ChartData[] = (seller.topProducts || []).map((p: any) => ({
+      label: p.title,
+      value: p.sales
+    }));
+
+    return {
+      totalRevenue: seller.totalRevenue || 0,
+      totalSales: seller.totalSales || 0,
+      totalDownloads: seller.totalOrders || 0,
+      averageRating: 0,
+      revenueChange: 0,
+      salesChange: 0,
+      downloadsChange: 0,
+      ratingChange: 0,
+      revenueData,
+      salesData,
+      topProducts
+    };
+  };
+
   const fetchAnalytics = async () => {
     if (!isAuthenticated || !user) return;
 
@@ -80,47 +79,22 @@ export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
     setError(null);
 
     try {
-      // Simuler un appel API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Retourner les données selon le variant
-      const analyticsData = variant === 'seller' ? mockSellerData : mockBuyerData;
-      
-      // Ajuster les données selon la période
-      const adjustedData = adjustDataForPeriod(analyticsData, period);
-      
-      setData(adjustedData);
+      if (variant === 'seller') {
+        const seller = await analyticsService.getSellerAnalytics(period);
+        setData(mapSellerAnalyticsToChart(seller));
+      } else {
+        setData(mockBuyerData);
+      }
     } catch (err) {
       setError('Erreur lors du chargement des analytics');
-      console.error('Error fetching analytics:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const adjustDataForPeriod = (data: AnalyticsData, period: 'week' | 'month' | 'year'): AnalyticsData => {
-    const multiplier = period === 'week' ? 0.25 : period === 'month' ? 1 : 12;
-    
-    return {
-      ...data,
-      totalRevenue: data.totalRevenue * multiplier,
-      totalSales: Math.round(data.totalSales * multiplier),
-      totalDownloads: Math.round(data.totalDownloads * multiplier),
-      revenueData: data.revenueData.map(item => ({
-        ...item,
-        value: Math.round(item.value * multiplier)
-      })),
-      topProducts: data.topProducts.map(item => ({
-        ...item,
-        value: Math.round(item.value * multiplier)
-      }))
-    };
-  };
-
   const getRevenueBreakdown = (): ChartData[] => {
     if (!data) return [];
-    
-    return [
+    return data.salesData.length > 0 ? data.salesData : [
       { label: 'Templates', value: 60 },
       { label: 'Graphiques', value: 25 },
       { label: 'E-books', value: 10 },
@@ -130,7 +104,6 @@ export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
 
   const getSalesTrend = (): ChartData[] => {
     if (!data) return [];
-    
     return data.revenueData.map(item => ({
       label: item.label,
       value: item.value
@@ -139,37 +112,25 @@ export const useAnalytics = (variant: 'buyer' | 'seller' = 'buyer') => {
 
   const getTopCategories = (): ChartData[] => {
     if (!data) return [];
-    
     return data.salesData;
   };
 
   const getPerformanceMetrics = () => {
     if (!data) return null;
-    
     return {
-      conversionRate: variant === 'seller' ? 3.2 : 0, // % de visiteurs qui achètent
-      averageOrderValue: variant === 'seller' ? data.totalRevenue / data.totalSales : 0,
+      conversionRate: variant === 'seller' ? 3.2 : 0,
+      averageOrderValue: variant === 'seller' ? (data.totalRevenue / Math.max(1, data.totalSales)) : 0,
       customerSatisfaction: data.averageRating,
-      repeatPurchaseRate: variant === 'buyer' ? 45 : 0, // % de clients qui rachètent
-      downloadRate: (data.totalDownloads / data.totalSales) * 100
+      repeatPurchaseRate: variant === 'buyer' ? 45 : 0,
+      downloadRate: (data.totalDownloads / Math.max(1, data.totalSales)) * 100
     };
   };
 
   const exportData = async (format: 'csv' | 'pdf' = 'csv') => {
     if (!data) return;
-    
     try {
-      // Simuler l'export
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      if (format === 'csv') {
-        // Logique d'export CSV
-        console.log('Exporting CSV data...');
-      } else {
-        // Logique d'export PDF
-        console.log('Exporting PDF data...');
-      }
-      
+      // Placeholder: côté backend, un endpoint d'export peut être ajouté
+      await new Promise(resolve => setTimeout(resolve, 500));
       return { success: true, message: `Données exportées en ${format.toUpperCase()}` };
     } catch (err) {
       return { success: false, message: 'Erreur lors de l\'export' };

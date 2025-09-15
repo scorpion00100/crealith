@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../prisma';
 import ImageKit from 'imagekit';
 import { createError } from '../utils/errors';
-
-const prisma = new PrismaClient();
 
 // Configuration ImageKit
 const imagekit = new ImageKit({

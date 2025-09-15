@@ -1,0 +1,188 @@
+.unauthorized-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.unauthorized-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.unauthorized-content {
+  padding: 60px 40px;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+}
+
+.error-title {
+  color: #dc2626;
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.error-message {
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0 0 32px 0;
+}
+
+.user-info {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.user-info p {
+  color: #374151;
+  font-size: 14px;
+  margin: 0 0 8px 0;
+}
+
+.user-info p:last-child {
+  margin-bottom: 0;
+}
+
+.user-role {
+  background: #6366f1;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.go-back-button {
+  background: #6b7280;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.go-back-button:hover {
+  background: #4b5563;
+  transform: translateY(-1px);
+}
+
+.dashboard-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dashboard-button:hover {
+  background: #5b5bd6;
+  transform: translateY(-1px);
+}
+
+.logout-button {
+  background: transparent;
+  color: #dc2626;
+  border: 2px solid #dc2626;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-button:hover {
+  background: #dc2626;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.help-section {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: left;
+}
+
+.help-section h3 {
+  color: #0369a1;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+.help-section p {
+  color: #0369a1;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .unauthorized-page {
+    padding: 10px;
+  }
+
+  .unauthorized-content {
+    padding: 40px 20px;
+  }
+
+  .error-title {
+    font-size: 24px;
+  }
+
+  .error-message {
+    font-size: 16px;
+  }
+
+  .error-actions {
+    flex-direction: column;
+  }
+
+  .go-back-button,
+  .dashboard-button,
+  .logout-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

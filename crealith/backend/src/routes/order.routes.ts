@@ -1,11 +1,11 @@
 import express from 'express';
 import { orderController } from '../controllers/order.controller';
-import { authMiddleware } from '../middleware/auth.middleware';
+import { requireAuth } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
 // Routes protégées par authentification
-router.use(authMiddleware);
+router.use(requireAuth);
 
 // Récupérer les commandes de l'utilisateur
 router.get('/', orderController.getUserOrders);

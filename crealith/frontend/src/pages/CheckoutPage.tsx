@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { fetchCart, clearCartAsync } from '@/store/slices/cartSlice';
-import { createOrder, confirmOrder } from '@/store/slices/orderSlice';
+import { createOrder } from '@/store/slices/orderSlice';
 import { addNotification } from '@/store/slices/uiSlice';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -59,7 +59,7 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
 
             if (paymentIntent.status === 'succeeded') {
                 // Confirmer la commande côté serveur
-                await dispatch(confirmOrder({
+                await dispatch(createOrder({
                     orderId: orderResult.order.id,
                     paymentIntentId: paymentIntent.id
                 })).unwrap();

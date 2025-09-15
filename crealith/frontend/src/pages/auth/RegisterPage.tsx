@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { addNotification } from '@/store/slices/uiSlice';
 import { useAppDispatch } from '@/store';
+import { PasswordStrengthIndicator } from '@/components/auth/PasswordStrengthIndicator';
 import '../../styles/auth/register.css';
+import '../../styles/auth/form-validation.css';
 
 export const RegisterPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -31,45 +33,91 @@ export const RegisterPage: React.FC = () => {
       [name]: type === 'checkbox' ? checked : value,
     }));
 
-    // Effacer l'erreur du champ modifié
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
+    // Validation en temps réel
+    validateField(name, type === 'checkbox' ? checked : value);
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const validateField = (fieldName: string, value: any) => {
+    const newErrors = { ...errors };
 
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'Le prénom est requis';
-    }
+    switch (fieldName) {
+      case 'firstName':
+        if (!value.trim()) {
+          newErrors.firstName = 'Le prénom est requis';
+        } else if (value.trim().length < 2) {
+          newErrors.firstName = 'Le prénom doit contenir au moins 2 caractères';
+        } else {
+          delete newErrors.firstName;
+        }
+        break;
 
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'Le nom est requis';
-    }
+      case 'lastName':
+        if (!value.trim()) {
+          newErrors.lastName = 'Le nom est requis';
+        } else if (value.trim().length < 2) {
+          newErrors.lastName = 'Le nom doit contenir au moins 2 caractères';
+        } else {
+          delete newErrors.lastName;
+        }
+        break;
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'L\'email est requis';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'L\'email n\'est pas valide';
-    }
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) {
+          newErrors.email = 'L\'email est requis';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Format d\'email invalide';
+        } else {
+          delete newErrors.email;
+        }
+        break;
 
-    if (!formData.password) {
-      newErrors.password = 'Le mot de passe est requis';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
-    }
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Le mot de passe est requis';
+        } else if (value.length < 8) {
+          newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères';
+        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
+          newErrors.password = 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre';
+        } else {
+          delete newErrors.password;
+        }
+        break;
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
-    }
+      case 'confirmPassword':
+        if (!value) {
+          newErrors.confirmPassword = 'La confirmation du mot de passe est requise';
+        } else if (value !== formData.password) {
+          newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+        } else {
+          delete newErrors.confirmPassword;
+        }
+        break;
 
-    if (!formData.agreeToTerms) {
-      newErrors.agreeToTerms = 'Vous devez accepter les conditions d\'utilisation';
+      case 'agreeToTerms':
+        if (!value) {
+          newErrors.agreeToTerms = 'Vous devez accepter les conditions d\'utilisation';
+        } else {
+          delete newErrors.agreeToTerms;
+        }
+        break;
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateForm = () => {
+    // Valider tous les champs
+    validateField('firstName', formData.firstName);
+    validateField('lastName', formData.lastName);
+    validateField('email', formData.email);
+    validateField('password', formData.password);
+    validateField('confirmPassword', formData.confirmPassword);
+    validateField('agreeToTerms', formData.agreeToTerms);
+
+    // Vérifier s'il y a des erreurs
+    const hasErrors = Object.keys(errors).length > 0;
+    return !hasErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,6 +231,7 @@ export const RegisterPage: React.FC = () => {
               {errors.password && (
                 <span className="field-error">{errors.password}</span>
               )}
+              <PasswordStrengthIndicator password={formData.password} />
             </div>
 
             <div className="form-group">

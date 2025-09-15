@@ -1,8 +1,16 @@
 import Stripe from 'stripe';
 import { createError } from './errors';
+import { SecureLogger } from './secure-logger';
+import { StripeErrorHandler, StripeErrorType } from './stripe-error-handler';
+
+// Validation de la configuration Stripe au démarrage
+StripeErrorHandler.validateStripeConfig();
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2023-10-16',
+  maxNetworkRetries: 3,
+  timeout: 30000,
+  telemetry: false, // Désactiver la télémétrie pour la confidentialité
 });
 
 export interface StripeAccountData {
@@ -21,59 +29,107 @@ export interface StripeAccountData {
 }
 
 export const createStripeAccount = async (data: StripeAccountData): Promise<string> => {
-  try {
-    const account = await stripe.accounts.create({
-      type: data.type,
-      country: data.country,
-      email: data.email,
-      business_type: data.business_type,
-      company: data.company,
-      individual: data.individual,
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true },
-      },
-    });
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const account = await stripe.accounts.create({
+        type: data.type,
+        country: data.country,
+        email: data.email,
+        business_type: data.business_type,
+        company: data.company,
+        individual: data.individual,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+      });
 
-    return account.id;
-  } catch (error) {
-    console.error('Stripe account creation error:', error);
-    throw createError.internal('Failed to create Stripe account');
-  }
+      SecureLogger.info('Stripe account created successfully', {
+        accountId: account.id,
+        type: account.type,
+        country: account.country
+      });
+
+      return account.id;
+    },
+    'createStripeAccount',
+    {
+      maxRetries: 2,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      accountType: data.type,
+      country: data.country,
+      email: data.email.substring(0, 3) + '***@' + data.email.split('@')[1]
+    }
+  );
 };
 
 export const createAccountLink = async (accountId: string, refreshUrl: string, returnUrl: string): Promise<string> => {
-  try {
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: refreshUrl,
-      return_url: returnUrl,
-      type: 'account_onboarding',
-    });
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: refreshUrl,
+        return_url: returnUrl,
+        type: 'account_onboarding',
+      });
 
-    return accountLink.url;
-  } catch (error) {
-    console.error('Stripe account link creation error:', error);
-    throw createError.internal('Failed to create account link');
-  }
+      SecureLogger.info('Stripe account link created successfully', {
+        accountId: accountId.substring(0, 8) + '...',
+        linkType: 'account_onboarding'
+      });
+
+      return accountLink.url;
+    },
+    'createAccountLink',
+    {
+      maxRetries: 2,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      accountId: accountId.substring(0, 8) + '...',
+      refreshUrl,
+      returnUrl
+    }
+  );
 };
 
 export const createPaymentIntent = async (amount: number, currency: string = 'eur', metadata?: any): Promise<Stripe.PaymentIntent> => {
-  try {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Stripe utilise les centimes
-      currency,
-      metadata,
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Stripe utilise les centimes
+        currency,
+        metadata,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
 
-    return paymentIntent;
-  } catch (error) {
-    console.error('Stripe payment intent creation error:', error);
-    throw createError.internal('Failed to create payment intent');
-  }
+      SecureLogger.info('Stripe payment intent created successfully', {
+        paymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status
+      });
+
+      return paymentIntent;
+    },
+    'createPaymentIntent',
+    {
+      maxRetries: 3,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      amount,
+      currency,
+      metadata: metadata ? Object.keys(metadata) : undefined
+    }
+  );
 };
 
 export const createTransfer = async (
@@ -82,58 +138,119 @@ export const createTransfer = async (
   destination: string,
   metadata?: any
 ): Promise<Stripe.Transfer> => {
-  try {
-    const transfer = await stripe.transfers.create({
-      amount: Math.round(amount * 100),
-      currency,
-      destination,
-      metadata,
-    });
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(amount * 100),
+        currency,
+        destination,
+        metadata,
+      });
 
-    return transfer;
-  } catch (error) {
-    console.error('Stripe transfer creation error:', error);
-    throw createError.internal('Failed to create transfer');
-  }
+      SecureLogger.info('Stripe transfer created successfully', {
+        transferId: transfer.id,
+        amount: transfer.amount,
+        currency: transfer.currency,
+        destination: transfer.destination
+      });
+
+      return transfer;
+    },
+    'createTransfer',
+    {
+      maxRetries: 3,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      amount,
+      currency,
+      destination: destination.substring(0, 8) + '...',
+      metadata: metadata ? Object.keys(metadata) : undefined
+    }
+  );
 };
 
 export const getAccountBalance = async (accountId: string): Promise<Stripe.Balance> => {
-  try {
-    const balance = await stripe.balance.retrieve({
-      stripeAccount: accountId,
-    });
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const balance = await stripe.balance.retrieve({
+        stripeAccount: accountId,
+      });
 
-    return balance;
-  } catch (error) {
-    console.error('Stripe balance retrieval error:', error);
-    throw createError.internal('Failed to retrieve account balance');
-  }
+      SecureLogger.info('Stripe balance retrieved successfully', {
+        accountId: accountId.substring(0, 8) + '...',
+        available: balance.available.length,
+        pending: balance.pending.length
+      });
+
+      return balance;
+    },
+    'getAccountBalance',
+    {
+      maxRetries: 2,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      accountId: accountId.substring(0, 8) + '...'
+    }
+  );
 };
 
 export const createRefund = async (paymentIntentId: string, amount?: number): Promise<Stripe.Refund> => {
-  try {
-    const refundData: Stripe.RefundCreateParams = {
-      payment_intent: paymentIntentId,
-    };
+  return StripeErrorHandler.executeWithRetry(
+    async () => {
+      const refundData: Stripe.RefundCreateParams = {
+        payment_intent: paymentIntentId,
+      };
 
-    if (amount) {
-      refundData.amount = Math.round(amount * 100);
+      if (amount) {
+        refundData.amount = Math.round(amount * 100);
+      }
+
+      const refund = await stripe.refunds.create(refundData);
+
+      SecureLogger.info('Stripe refund created successfully', {
+        refundId: refund.id,
+        paymentIntentId: paymentIntentId.substring(0, 8) + '...',
+        amount: refund.amount,
+        status: refund.status
+      });
+
+      return refund;
+    },
+    'createRefund',
+    {
+      maxRetries: 2,
+      retryDelay: 1000,
+      logLevel: 'error'
+    },
+    {
+      paymentIntentId: paymentIntentId.substring(0, 8) + '...',
+      amount
     }
-
-    const refund = await stripe.refunds.create(refundData);
-
-    return refund;
-  } catch (error) {
-    console.error('Stripe refund creation error:', error);
-    throw createError.internal('Failed to create refund');
-  }
+  );
 };
 
 export const verifyWebhookSignature = (payload: string, signature: string, secret: string): Stripe.Event => {
   try {
-    return stripe.webhooks.constructEvent(payload, signature, secret);
+    const event = stripe.webhooks.constructEvent(payload, signature, secret);
+    
+    SecureLogger.info('Stripe webhook signature verified successfully', {
+      eventId: event.id,
+      eventType: event.type,
+      signaturePrefix: signature.substring(0, 20) + '...'
+    });
+    
+    return event;
   } catch (error) {
-    console.error('Webhook signature verification failed:', error);
+    const errorInfo = StripeErrorHandler.analyzeError(error, 'verifyWebhookSignature', {
+      signaturePrefix: signature.substring(0, 20) + '...',
+      payloadLength: payload.length
+    });
+    
+    StripeErrorHandler.logError(errorInfo, { logLevel: 'error' });
     throw createError.unauthorized('Invalid webhook signature');
   }
 };

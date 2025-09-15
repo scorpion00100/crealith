@@ -18,6 +18,9 @@ model User {
   avatar        String?
   bio           String?
   isActive      Boolean   @default(true) @map("is_active")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  emailVerificationToken String? @map("email_verification_token")
+  emailVerificationExpires DateTime? @map("email_verification_expires")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
@@ -29,6 +32,9 @@ model User {
   notifications Notification[]
   transactions  Transaction[]
 
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
   @@map("users")
 }
 
@@ -44,6 +50,8 @@ model Category {
 
   products    Product[]
 
+  @@index([slug])
+  @@index([isActive])
   @@map("categories")
 }
 
@@ -76,6 +84,16 @@ model Product {
   cartItems       CartItem[]
   favorites       Favorite[]
 
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([isFeatured])
+  @@index([userId])
+  @@index([price])
+  @@index([createdAt])
+  @@index([downloadsCount])
+  @@index([categoryId, isActive])
+  @@index([isFeatured, createdAt])
+  @@index([userId, isActive])
   @@map("products")
 }
 
@@ -95,6 +113,11 @@ model Order {
   items           OrderItem[]
   transactions    Transaction[]
 
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId, status])
+  @@index([orderNumber])
   @@map("orders")
 }
 
@@ -110,6 +133,9 @@ model OrderItem {
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id])
 
+  @@index([orderId])
+  @@index([productId])
+  @@index([createdAt])
   @@map("order_items")
 }
 
@@ -125,6 +151,9 @@ model CartItem {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([createdAt])
   @@map("cart_items")
 }
 
@@ -142,6 +171,10 @@ model Review {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([createdAt])
+  @@index([productId, createdAt])
   @@map("reviews")
 }
 
@@ -156,6 +189,9 @@ model Favorite {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+  @@index([createdAt])
   @@map("favorites")
 }
 
@@ -172,6 +208,11 @@ model Notification {
   userId      String   @map("user_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([read])
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId, read])
   @@map("notifications")
 }
 
@@ -193,6 +234,11 @@ model Transaction {
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([orderId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
   @@map("transactions")
 }
 

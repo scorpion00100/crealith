@@ -4,7 +4,7 @@ export const orderController = {
   // Récupérer les commandes de l'utilisateur
   async getUserOrders(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const { page = 1, limit = 10, status, search, dateFrom, dateTo } = req.query;
 
       // TODO: Remplacer par de vraies requêtes Prisma
@@ -120,7 +120,7 @@ export const orderController = {
   async getOrderById(req: Request, res: Response) {
     try {
       const { orderId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
 
       // TODO: Remplacer par une vraie requête Prisma
       const mockOrder = {
@@ -156,7 +156,7 @@ export const orderController = {
   // Créer une nouvelle commande
   async createOrder(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const { items, paymentMethod } = req.body;
 
       // TODO: Implémenter la logique de création de commande avec Stripe
@@ -201,7 +201,7 @@ export const orderController = {
   async cancelOrder(req: Request, res: Response) {
     try {
       const { orderId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
 
       // TODO: Implémenter la logique d'annulation avec remboursement Stripe
       res.json({ message: 'Commande annulée avec succès' });

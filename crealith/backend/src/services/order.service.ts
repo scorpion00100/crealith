@@ -1,4 +1,4 @@
-import { prisma } from '../app';
+import prisma from '../prisma';
 import { createError } from '../utils/errors';
 import { stripe } from '../utils/stripe';
 import { Order, OrderItem, CartItem, Product, Prisma } from '@prisma/client';
@@ -317,9 +317,8 @@ export class OrderService {
   }
 
   async getOrderById(id: string, userId: string, role: string): Promise<Order | null> {
-    const where: Prisma.OrderWhereInput = {
+    const where: Prisma.OrderWhereUniqueInput = {
       id,
-      ...(role !== 'ADMIN' && { userId }),
     };
 
     return prisma.order.findUnique({

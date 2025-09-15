@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useUI } from './useUI';
+import { getErrorMessage } from '@/utils/error-messages';
 
 interface ApiState<T> {
   data: T | null;
@@ -32,7 +33,7 @@ export const useApi = <T = any>() => {
       
       return data;
     } catch (error: any) {
-      const errorMessage = error.message || 'Une erreur est survenue';
+      const errorMessage = getErrorMessage(error);
       setState(prev => ({ ...prev, loading: false, error: errorMessage }));
       
       if (showErrorMessage) {

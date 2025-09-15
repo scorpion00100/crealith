@@ -22,10 +22,16 @@ const initialState: SearchState = {
   currentFilters: {},
 };
 
-export const searchProducts = createAsyncThunk(
+export const searchProductsAsync = createAsyncThunk(
   'search/searchProducts',
-  async (filters: SearchFilters) => {
-    return await searchService.searchProducts(filters);
+  async (params: { query: string; filters?: any; page?: number; limit?: number }) => {
+    const { query, filters, page = 1, limit = 20 } = params;
+    return await searchService.searchProducts({
+      query,
+      ...filters,
+      page,
+      limit
+    });
   }
 );
 
@@ -72,16 +78,16 @@ const searchSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // searchProducts
-      .addCase(searchProducts.pending, (state) => {
+      // searchProductsAsync
+      .addCase(searchProductsAsync.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(searchProducts.fulfilled, (state, action) => {
+      .addCase(searchProductsAsync.fulfilled, (state, action) => {
         state.isLoading = false;
         state.searchResults = action.payload;
       })
-      .addCase(searchProducts.rejected, (state, action) => {
+      .addCase(searchProductsAsync.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Failed to search products';
       })

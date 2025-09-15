@@ -1,7 +1,5 @@
 import { Server as SocketIOServer } from 'socket.io';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../prisma';
 
 export interface Notification {
   id: string;
@@ -49,7 +47,7 @@ export class NotificationService {
 
     return {
       id: notification.id,
-      type: notification.type,
+      type: notification.type as 'success' | 'error' | 'warning' | 'info',
       title: notification.title,
       message: notification.message,
       userId: notification.userId,
@@ -68,7 +66,7 @@ export class NotificationService {
 
     return notifications.map(notification => ({
       id: notification.id,
-      type: notification.type,
+      type: notification.type as 'success' | 'error' | 'warning' | 'info',
       title: notification.title,
       message: notification.message,
       userId: notification.userId,

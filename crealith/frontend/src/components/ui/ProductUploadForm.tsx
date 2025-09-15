@@ -11,6 +11,9 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import { FileUploadZone } from '@/components/marketplace/FileUploadZone';
+import { useImageUpload } from '@/hooks/useImageUpload';
+import { productService } from '@/services/product.service';
 
 interface ProductUploadFormProps {
   onSuccess?: () => void;
@@ -81,6 +84,28 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+
+  // Upload hooks
+  const {
+    isUploading: isUploadingImage,
+    uploadedImages: uploadedThumbnails,
+    uploadImage: uploadThumbnail,
+    clearImages: clearThumbs,
+  } = useImageUpload({
+    folder: '/crealith/products',
+    acceptedFileTypes: allowedImageTypes,
+  });
+
+  const {
+    isUploading: isUploadingFile,
+    uploadedImages: uploadedFiles,
+    uploadImage: uploadMainFile,
+    clearImages: clearFiles,
+  } = useImageUpload({
+    folder: '/crealith/files',
+    acceptedFileTypes: allowedFileTypes,
+  });
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -113,12 +138,9 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'thumbnail') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFileSelected = (file: File, type: 'file' | 'thumbnail') => {
     const allowedTypes = type === 'file' ? allowedFileTypes : allowedImageTypes;
-    const maxSize = type === 'file' ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // 50MB pour fichiers, 5MB pour images
+    const maxSize = type === 'file' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
 
     if (!allowedTypes.includes(file.type)) {
       setErrors(prev => ({
@@ -142,6 +164,12 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
 
     setFormData(prev => ({ ...prev, [type]: file }));
     setErrors(prev => ({ ...prev, [type]: undefined }));
+
+    if (type === 'thumbnail') {
+      const reader = new FileReader();
+      reader.onload = e => setThumbnailPreview((e.target?.result as string) || null);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleTagAdd = () => {
@@ -169,29 +197,55 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Simuler l'upload
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Upload des fichiers si nécessaire
+      let thumbnailUrl: string | undefined;
+      let fileUrl: string | undefined;
+
+      if (formData.thumbnail) {
+        const thumbRes = await uploadThumbnail(formData.thumbnail, formData.title.replace(/\s+/g, '_'));
+        thumbnailUrl = thumbRes.url;
+      }
+
+      if (formData.file) {
+        const fileRes = await uploadMainFile(formData.file, formData.title.replace(/\s+/g, '_'));
+        fileUrl = fileRes.url;
+      }
+
+      // Création ou mise à jour du produit
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        price: String(formData.price),
+        category: { id: formData.category, name: '' },
+        tags: formData.tags,
+        thumbnailUrl,
+        fileUrl,
+        fileType: formData.file?.type,
+        fileSize: formData.file?.size,
+        status: 'draft',
+      } as any;
+
+      if (productId) {
+        await productService.updateProduct(productId, payload);
+      } else {
+        await productService.createProduct(payload);
+      }
+
+      clearThumbs();
+      clearFiles();
 
       dispatch(addNotification({
-        id: Date.now().toString(),
         type: 'success',
-        title: productId ? 'Produit mis à jour' : 'Produit créé',
-        message: productId
-          ? 'Le produit a été mis à jour avec succès'
-          : 'Le produit a été créé avec succès',
-        read: false,
-        createdAt: new Date().toISOString()
+        message: productId ? 'Le produit a été mis à jour avec succès' : 'Le produit a été créé avec succès',
+        duration: 3000,
       }));
 
       onSuccess?.();
     } catch (error) {
       dispatch(addNotification({
-        id: Date.now().toString(),
         type: 'error',
-        title: 'Erreur',
         message: 'Une erreur est survenue lors de la sauvegarde',
-        read: false,
-        createdAt: new Date().toISOString()
+        duration: 4000,
       }));
     } finally {
       setIsSubmitting(false);
@@ -369,44 +423,31 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
         </div>
       </div>
 
-      {/* Fichier principal */}
+      {/* Fichier principal (Drag & Drop) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Fichier principal *
         </label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-          <input
-            type="file"
-            onChange={(e) => handleFileChange(e, 'file')}
-            accept={allowedFileTypes.join(',')}
-            className="hidden"
-            id="file-upload"
-          />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            {formData.file ? (
-              <div className="flex items-center justify-center space-x-2">
-                <span className="text-2xl">{getFileIcon(formData.file.name)}</span>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">{formData.file.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {(formData.file.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              </div>
-            ) : (
-              <div>
-                <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">
-                  Cliquez pour sélectionner un fichier ou glissez-déposez
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  PDF, ZIP, SVG, TXT, JSON, CSS, HTML, JS (max 50MB)
-                </p>
-              </div>
-            )}
-          </label>
-        </div>
+        <FileUploadZone
+          onFilesUploaded={(files) => {
+            const first = files[0]?.file;
+            if (first) {
+              handleFileSelected(first, 'file');
+            }
+          }}
+          maxFiles={1}
+          multiple={false}
+          acceptedTypes={allowedFileTypes}
+          className="bg-white"
+        />
+        {formData.file && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+            <span className="text-2xl">{getFileIcon(formData.file.name)}</span>
+            <span className="font-medium">{formData.file.name}</span>
+            <span className="text-gray-500">{(formData.file.size / 1024 / 1024).toFixed(2)} MB</span>
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          </div>
+        )}
         {errors.file && (
           <p className="mt-1 text-sm text-red-600 flex items-center">
             <AlertCircle className="w-4 h-4 mr-1" />
@@ -415,44 +456,42 @@ export const ProductUploadForm: React.FC<ProductUploadFormProps> = ({
         )}
       </div>
 
-      {/* Miniature */}
+      {/* Miniature (Drag & Drop) */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Miniature *
         </label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-          <input
-            type="file"
-            onChange={(e) => handleFileChange(e, 'thumbnail')}
-            accept={allowedImageTypes.join(',')}
-            className="hidden"
-            id="thumbnail-upload"
-          />
-          <label htmlFor="thumbnail-upload" className="cursor-pointer">
-            {formData.thumbnail ? (
-              <div className="flex items-center justify-center space-x-2">
+        <FileUploadZone
+          onFilesUploaded={(files) => {
+            const first = files[0];
+            if (first?.file) {
+              handleFileSelected(first.file, 'thumbnail');
+              if (first.preview) setThumbnailPreview(first.preview);
+            }
+          }}
+          maxFiles={1}
+          multiple={false}
+          acceptedTypes={allowedImageTypes}
+          className="bg-white"
+        />
+        {(formData.thumbnail || thumbnailPreview) && (
+          <div className="mt-2 flex items-center gap-3">
+            <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 flex items-center justify-center">
+              {thumbnailPreview ? (
+                <img src={thumbnailPreview} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
                 <Image className="w-8 h-8 text-blue-500" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-gray-900">{formData.thumbnail.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {(formData.thumbnail.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-                <CheckCircle className="w-5 h-5 text-green-500" />
-              </div>
-            ) : (
-              <div>
-                <Image className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600">
-                  Cliquez pour sélectionner une image ou glissez-déposez
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  JPEG, PNG, WebP (max 5MB)
-                </p>
+              )}
+            </div>
+            {formData.thumbnail && (
+              <div className="text-sm text-gray-700">
+                <div className="font-medium">{formData.thumbnail.name}</div>
+                <div className="text-gray-500">{(formData.thumbnail.size / 1024 / 1024).toFixed(2)} MB</div>
               </div>
             )}
-          </label>
-        </div>
+            <CheckCircle className="w-4 h-4 text-green-500" />
+          </div>
+        )}
         {errors.thumbnail && (
           <p className="mt-1 text-sm text-red-600 flex items-center">
             <AlertCircle className="w-4 h-4 mr-1" />

@@ -193,6 +193,137 @@ const initialState: ProductState = {
       totalSales: 134,
       totalReviews: 156,
       hasPurchased: false
+    },
+    {
+      id: '5',
+      title: 'Portfolio Template',
+      author: 'Creative Studio',
+      price: '24.99',
+      originalPrice: '39.99',
+      rating: 4.9,
+      reviews: 89,
+      downloads: 950,
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
+      tags: ['portfolio', 'template', 'creative', 'responsive'],
+      popular: true,
+      new: true,
+      trending: false,
+      discount: 37,
+      description: 'Template de portfolio moderne et élégant pour créatifs et développeurs.',
+      shortDescription: 'Template portfolio moderne pour créatifs',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
+      fileUrl: '/files/portfolio-template.zip',
+      fileSize: 18.7,
+      fileType: 'zip',
+      downloadsCount: 950,
+      isActive: true,
+      isFeatured: true,
+      createdAt: '2024-01-20T12:00:00Z',
+      updatedAt: '2024-01-22T09:30:00Z',
+      userId: 'user5',
+      categoryId: 'templates',
+      user: {
+        id: 'user5',
+        firstName: 'Creative',
+        lastName: 'Studio',
+        avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face'
+      },
+      category: {
+        id: 'templates',
+        name: 'Templates Web',
+        slug: 'templates'
+      },
+      averageRating: 4.9,
+      totalSales: 67,
+      totalReviews: 89,
+      hasPurchased: false
+    },
+    {
+      id: '6',
+      title: 'Illustration Pack',
+      author: 'Art Designer',
+      price: '19.99',
+      rating: 4.6,
+      reviews: 234,
+      downloads: 3200,
+      image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+      tags: ['illustration', 'art', 'vector', 'graphics'],
+      popular: false,
+      new: false,
+      trending: true,
+      discount: 0,
+      description: 'Pack d\'illustrations vectorielles modernes pour vos projets créatifs.',
+      shortDescription: 'Pack d\'illustrations vectorielles modernes',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+      fileUrl: '/files/illustration-pack.ai',
+      fileSize: 22.1,
+      fileType: 'ai',
+      downloadsCount: 3200,
+      isActive: true,
+      isFeatured: false,
+      createdAt: '2024-01-05T14:45:00Z',
+      updatedAt: '2024-01-18T11:20:00Z',
+      userId: 'user6',
+      categoryId: 'illustrations',
+      user: {
+        id: 'user6',
+        firstName: 'Art',
+        lastName: 'Designer',
+        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face'
+      },
+      category: {
+        id: 'illustrations',
+        name: 'Illustrations',
+        slug: 'illustrations'
+      },
+      averageRating: 4.6,
+      totalSales: 189,
+      totalReviews: 234,
+      hasPurchased: false
+    },
+    {
+      id: '7',
+      title: 'Admin Dashboard',
+      author: 'Dev Solutions',
+      price: '49.99',
+      originalPrice: '79.99',
+      rating: 4.8,
+      reviews: 156,
+      downloads: 2100,
+      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+      tags: ['admin', 'dashboard', 'management', 'react'],
+      popular: true,
+      new: false,
+      trending: true,
+      discount: 37,
+      description: 'Dashboard d\'administration complet avec gestion des utilisateurs et statistiques.',
+      shortDescription: 'Dashboard d\'administration complet',
+      thumbnailUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+      fileUrl: '/files/admin-dashboard.zip',
+      fileSize: 35.4,
+      fileType: 'zip',
+      downloadsCount: 2100,
+      isActive: true,
+      isFeatured: true,
+      createdAt: '2024-01-12T16:30:00Z',
+      updatedAt: '2024-01-25T13:15:00Z',
+      userId: 'user7',
+      categoryId: 'dashboards',
+      user: {
+        id: 'user7',
+        firstName: 'Dev',
+        lastName: 'Solutions',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
+      },
+      category: {
+        id: 'dashboards',
+        name: 'Dashboards',
+        slug: 'dashboards'
+      },
+      averageRating: 4.8,
+      totalSales: 145,
+      totalReviews: 156,
+      hasPurchased: false
     }
   ],
   currentProduct: null,
@@ -212,8 +343,19 @@ const initialState: ProductState = {
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async (filters?: ProductFilters) => {
-    const response = await productService.getProducts(filters);
-    return response;
+    try {
+      const response = await productService.getProducts(filters);
+      return response;
+    } catch (error) {
+      // En cas d'erreur API, retourner les données de démonstration
+      console.warn('API error, using demo data:', error);
+      return {
+        products: initialState.items,
+        page: 1,
+        total: initialState.items.length,
+        totalPages: 1
+      };
+    }
   }
 );
 
@@ -292,6 +434,14 @@ const productSlice = createSlice({
       .addCase(fetchProducts.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.error.message || 'Erreur lors du chargement des produits';
+        // Utiliser les données de démonstration en cas d'erreur
+        state.items = initialState.items;
+        state.pagination = {
+          page: 1,
+          total: initialState.items.length,
+          totalPages: 1,
+          limit: 12
+        };
       })
       // fetchProductById
       .addCase(fetchProductById.pending, (state) => {

@@ -2,17 +2,21 @@ import { Request, Response, NextFunction } from 'express';
 import { ProductService } from '../services/product.service';
 import { createError } from '../utils/errors';
 
+
+
 const productService = new ProductService();
 
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    if (!req.files || !req.files.file) {
+    const files = req.files as any;
+    if (!files || !files.file) {
       throw createError.badRequest('Product file is required');
     }
 
-    const file = Array.isArray(req.files.file) ? req.files.file[0] : req.files.file;
-    const thumbnail = req.files.thumbnail ? (Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : req.files.thumbnail) : undefined;
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    const thumbnail = files.thumbnail ? (Array.isArray(files.thumbnail) ? files.thumbnail[0] : files.thumbnail) : undefined;
 
+    const user = req.user as any;
     const productData = {
       title: req.body.title,
       description: req.body.description,
@@ -23,7 +27,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       thumbnail,
       tags: req.body.tags ? JSON.parse(req.body.tags) : [],
       categoryId: req.body.categoryId,
-      userId: req.user!.id,
+      userId: user.userId,
     };
 
     const product = await productService.createProduct(productData);
@@ -44,7 +48,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       isActive: req.query.isActive !== 'false', // Par défaut true
       page: req.query.page ? parseInt(req.query.page as string) : 1,
       limit: req.query.limit ? parseInt(req.query.limit as string) : 12,
-      sortBy: req.query.sortBy as 'price' | 'createdAt' | 'downloadsCount' | 'rating',
+      sortBy: req.query.sortBy as 'price' | 'createdAt' | 'downloadsCount',
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
     };
 
@@ -70,6 +74,8 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const updateData: any = {};
+    const files = req.files as any;
+    const user = req.user as any;
     
     if (req.body.title) updateData.title = req.body.title;
     if (req.body.description) updateData.description = req.body.description;
@@ -83,14 +89,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
     if (req.body.isActive !== undefined) updateData.isActive = req.body.isActive === 'true';
     if (req.body.isFeatured !== undefined) updateData.isFeatured = req.body.isFeatured === 'true';
 
-    if (req.files?.file) {
-      updateData.file = Array.isArray(req.files.file) ? req.files.file[0] : req.files.file;
+    if (files?.file) {
+      updateData.file = Array.isArray(files.file) ? files.file[0] : files.file;
     }
-    if (req.files?.thumbnail) {
-      updateData.thumbnail = Array.isArray(req.files.thumbnail) ? req.files.thumbnail[0] : req.files.thumbnail;
+    if (files?.thumbnail) {
+      updateData.thumbnail = Array.isArray(files.thumbnail) ? files.thumbnail[0] : files.thumbnail;
     }
 
-    const product = await productService.updateProduct(req.params.id, req.user!.id, updateData);
+    const product = await productService.updateProduct(req.params.id, user.userId, updateData);
     res.json({ success: true, data: product });
   } catch (error) {
     next(error);
@@ -99,7 +105,8 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
 export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await productService.deleteProduct(req.params.id, req.user!.id);
+    const user = req.user as any;
+    await productService.deleteProduct(req.params.id, user.userId);
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     next(error);
@@ -108,7 +115,8 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
 
 export const getUserProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const products = await productService.getProductsByUser(req.user!.id);
+    const user = req.user as any;
+    const products = await productService.getProductsByUser(user.userId);
     res.json({ success: true, data: products });
   } catch (error) {
     next(error);
@@ -117,14 +125,15 @@ export const getUserProducts = async (req: Request, res: Response, next: NextFun
 
 export const downloadProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const user = req.user as any;
     const product = await productService.getProductById(req.params.id);
     if (!product) {
       throw createError.notFound('Product not found');
     }
 
     // Vérifier si l'utilisateur a acheté le produit
-    const hasPurchased = await productService.hasUserPurchased(req.user!.id, req.params.id);
-    if (!hasPurchased && product.userId !== req.user!.id) {
+    const hasPurchased = await productService.hasUserPurchased(user.userId, req.params.id);
+    if (!hasPurchased && product.userId !== user.userId) {
       throw createError.forbidden('You must purchase this product to download it');
     }
 

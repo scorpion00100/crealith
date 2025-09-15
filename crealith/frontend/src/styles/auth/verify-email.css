@@ -1,0 +1,264 @@
+.verify-email-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.verify-email-container {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 500px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.verify-email-header {
+  background: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+  color: white;
+  padding: 30px;
+  text-align: center;
+}
+
+.verify-email-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.logo-icon {
+  font-size: 32px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.verify-email-content {
+  padding: 40px 30px;
+  text-align: center;
+}
+
+.verification-success {
+  color: #059669;
+}
+
+.success-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.verification-success h2 {
+  color: #059669;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.verification-success p {
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+}
+
+.verification-error {
+  color: #dc2626;
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.verification-error h2 {
+  color: #dc2626;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.verification-error p {
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.retry-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-button:hover {
+  background: #5b5bd6;
+  transform: translateY(-1px);
+}
+
+.login-button {
+  background: transparent;
+  color: #6366f1;
+  border: 2px solid #6366f1;
+  padding: 10px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.login-button:hover {
+  background: #6366f1;
+  color: white;
+}
+
+.verification-pending {
+  color: #1f2937;
+}
+
+.pending-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.verification-pending h2 {
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+}
+
+.verification-pending p {
+  color: #6b7280;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 30px 0;
+}
+
+.verification-form {
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.verification-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+  text-align: center;
+  letter-spacing: 2px;
+  font-family: monospace;
+}
+
+.verification-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.verify-button {
+  background: #6366f1;
+  color: white;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+}
+
+.verify-button:hover {
+  background: #5b5bd6;
+  transform: translateY(-1px);
+}
+
+.verify-email-footer {
+  padding: 20px 30px;
+  text-align: center;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.verify-email-footer p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+.verify-email-footer a {
+  color: #6366f1;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.verify-email-footer a:hover {
+  color: #5b5bd6;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .verify-email-page {
+    padding: 10px;
+  }
+
+  .verify-email-header {
+    padding: 20px;
+  }
+
+  .verify-email-content {
+    padding: 30px 20px;
+  }
+
+  .verify-email-footer {
+    padding: 15px 20px;
+  }
+
+  .error-actions {
+    flex-direction: column;
+  }
+
+  .retry-button,
+  .login-button {
+    width: 100%;
+  }
+}

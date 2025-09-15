@@ -1,16 +1,9 @@
-// Hooks d'authentification et état
+// Export de tous les hooks personnalisés
+export { useErrorHandler, ErrorType } from './useErrorHandler';
+export { useAsyncError, useApiError, useFormError, useDataError } from './useAsyncError';
 export { useAuth } from './useAuth';
-export { useProducts } from './useProducts';
 export { useCart } from './useCart';
-export { useUI } from './useUI';
-
-// Hooks de dashboard
+export { useFavorites } from './useFavorites';
+export { useProducts } from './useProducts';
 export { useOrders } from './useOrders';
-export { useAnalytics } from './useAnalytics';
-
-// Hooks utilitaires
-export { useLocalStorage } from './useLocalStorage';
-export { useDebounce } from './useDebounce';
-export { useClickOutside } from './useClickOutside';
-export { useApi } from './useApi';
-export { useInfiniteScroll } from './useInfiniteScroll';
+export { useNotifications } from './useNotifications';

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { addNotification } from '@/store/slices/uiSlice';
 import { useAppDispatch } from '@/store';
 import '../../styles/auth/login.css';
+import '../../styles/auth/form-validation.css';
 
 export const LoginPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -17,17 +18,69 @@ export const LoginPage: React.FC = () => {
     rememberMe: false,
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
+
+    // Validation en temps réel
+    validateField(name, type === 'checkbox' ? checked : value);
+  };
+
+  const validateField = (fieldName: string, value: any) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) {
+          newErrors.email = 'L\'email est requis';
+        } else if (!emailRegex.test(value)) {
+          newErrors.email = 'Format d\'email invalide';
+        } else {
+          delete newErrors.email;
+        }
+        break;
+
+      case 'password':
+        if (!value) {
+          newErrors.password = 'Le mot de passe est requis';
+        } else {
+          delete newErrors.password;
+        }
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const validateForm = () => {
+    // Valider tous les champs
+    validateField('email', formData.email);
+    validateField('password', formData.password);
+
+    // Vérifier s'il y a des erreurs
+    const hasErrors = Object.keys(errors).length > 0;
+    return !hasErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+
+    // Validation avant soumission
+    if (!validateForm()) {
+      dispatch(addNotification({
+        type: 'error',
+        message: 'Veuillez corriger les erreurs dans le formulaire',
+        duration: 4000,
+      }));
+      return;
+    }
 
     try {
       await login(formData);
@@ -73,8 +126,14 @@ export const LoginPage: React.FC = () => {
               onChange={handleInputChange}
               required
               placeholder="votre@email.com"
-              className="form-input"
+              className={`form-input ${errors.email ? 'error' : ''}`}
             />
+            {errors.email && (
+              <div className="field-error">
+                <span className="error-icon">⚠️</span>
+                {errors.email}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -87,8 +146,14 @@ export const LoginPage: React.FC = () => {
               onChange={handleInputChange}
               required
               placeholder="Votre mot de passe"
-              className="form-input"
+              className={`form-input ${errors.password ? 'error' : ''}`}
             />
+            {errors.password && (
+              <div className="field-error">
+                <span className="error-icon">⚠️</span>
+                {errors.password}
+              </div>
+            )}
           </div>
 
           <div className="form-options">
