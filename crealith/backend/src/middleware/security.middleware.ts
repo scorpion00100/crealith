@@ -51,6 +51,18 @@ export const emailVerificationRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiting for Google OAuth init to prevent abuse
+export const googleAuthRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: {
+    success: false,
+    message: 'Too many Google auth attempts. Please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Middleware pour valider les URLs de redirection
 export const validateRedirectUrl = (req: Request, res: Response, next: NextFunction) => {
   const redirectUrl = req.query.redirect as string;

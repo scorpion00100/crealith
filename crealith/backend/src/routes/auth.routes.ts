@@ -10,6 +10,8 @@ import {
   validateRedirectUrl,
   auditAuthAttempts
 } from '../middleware/security.middleware';
+import passport from '../config/passport';
+import { redisService } from '../services/redis.service';
 
 const router = Router();
 const authService = new AuthService();
@@ -385,6 +387,59 @@ router.post('/redis/cleanup', authenticateToken, async (req, res, next) => {
       message: `Cleaned up ${cleaned} expired tokens`,
       data: { cleaned }
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ---- Google OAuth2 ----
+// Start Google OAuth flow
+router.get('/google', validateRedirectUrl, (req, res, next) => {
+  const scope = ['profile', 'email'];
+  const state = typeof req.query.redirect === 'string' ? req.query.redirect : undefined;
+  const authenticator = passport.authenticate('google', {
+    scope,
+    state
+  } as any);
+  authenticator(req, res, next);
+});
+
+// Google OAuth callback
+router.get('/google/callback', passport.authenticate('google', { session: false, failureRedirect: '/login?error=google_oauth_failed' } as any), async (req, res, next) => {
+  try {
+    const googleData: any = req.user;
+    const redirect = (googleData && googleData.state) || (req.query.state as string) || (process.env.FRONTEND_URL || 'http://localhost:3000');
+
+    if (!googleData || !googleData.profile) {
+      throw createError.unauthorized('Google authentication failed');
+    }
+
+    const profile = googleData.profile;
+    const email = profile.emails && profile.emails[0] && profile.emails[0].value;
+    const firstName = profile.name?.givenName || 'Google';
+    const lastName = profile.name?.familyName || 'User';
+    const avatar = profile.photos && profile.photos[0] && profile.photos[0].value;
+    const googleId = profile.id;
+
+    if (!email) {
+      throw createError.badRequest('Google account has no email');
+    }
+
+    // Delegate to service method to create/link user and issue tokens
+    const result = await authService.googleLogin({
+      email,
+      firstName,
+      lastName,
+      avatar,
+      googleId,
+      accessToken: googleData.tokens?.accessToken,
+      refreshToken: googleData.tokens?.refreshToken
+    });
+
+    // Redirect with tokens as URL fragments to avoid logs
+    const url = new URL(redirect);
+    url.hash = `accessToken=${encodeURIComponent(result.accessToken)}&refreshToken=${encodeURIComponent(result.refreshToken)}`;
+    return res.redirect(url.toString());
   } catch (error) {
     next(error);
   }

@@ -14,6 +14,7 @@ import { correlationIdMiddleware, requestLoggingMiddleware, securityAuditMiddlew
 import { sanitizeInput } from './middleware/validation.middleware';
 import { swaggerSpec } from './config/swagger.config';
 import { logger } from './utils/logger';
+import passport from './config/passport';
 
 dotenv.config();
 
@@ -54,6 +55,8 @@ app.use(rateLimit({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(compression());
+// Passport (no sessions, stateless JWT)
+app.use(passport.initialize());
 
 // Middlewares d'audit et de logging
 app.use(correlationIdMiddleware);

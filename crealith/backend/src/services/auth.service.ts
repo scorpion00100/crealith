@@ -55,6 +55,81 @@ export class AuthService {
     };
   }
 
+  async googleLogin(data: { email: string; firstName: string; lastName: string; avatar?: string | null; googleId: string; accessToken?: string; refreshToken?: string }) {
+    // Try find existing by googleId
+    let user = await prisma.user.findFirst({ where: { googleId: data.googleId, isActive: true } });
+
+    // If not found, try link by email
+    if (!user) {
+      user = await prisma.user.findUnique({ where: { email: data.email } });
+
+      if (user) {
+        // Link Google to existing account
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: data.googleId,
+            googleEmail: data.email,
+            googleName: `${data.firstName} ${data.lastName}`.trim(),
+            googleAvatar: data.avatar || user.avatar || null,
+            googleAccessToken: data.accessToken,
+            googleRefreshToken: data.refreshToken,
+            // Ensure emailVerified is true if Google provided verified email
+            emailVerified: true,
+            // Optionally sync public profile fields
+            firstName: user.firstName || data.firstName,
+            lastName: user.lastName || data.lastName,
+            avatar: user.avatar || data.avatar || null
+          }
+        });
+      } else {
+        // Create new user
+        user = await prisma.user.create({
+          data: {
+            email: data.email,
+            passwordHash: await hashPassword(require('crypto').randomBytes(16).toString('hex')), // random password placeholder
+            firstName: data.firstName,
+            lastName: data.lastName,
+            role: 'BUYER',
+            avatar: data.avatar || null,
+            emailVerified: true,
+            googleId: data.googleId,
+            googleEmail: data.email,
+            googleName: `${data.firstName} ${data.lastName}`.trim(),
+            googleAvatar: data.avatar || null,
+            googleAccessToken: data.accessToken,
+            googleRefreshToken: data.refreshToken
+          }
+        });
+      }
+    } else {
+      // Update tokens and profile sync
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleAccessToken: data.accessToken,
+          googleRefreshToken: data.refreshToken,
+          googleEmail: data.email,
+          googleName: `${data.firstName} ${data.lastName}`.trim(),
+          googleAvatar: data.avatar || user.avatar || null,
+          avatar: user.avatar || data.avatar || null
+        }
+      });
+    }
+
+    // Issue tokens
+    const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
+    const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
+    await redisService.storeRefreshToken(refreshToken, user.id);
+
+    const { passwordHash, ...userWithoutPassword } = user as any;
+    return {
+      user: userWithoutPassword,
+      accessToken,
+      refreshToken,
+      expiresIn: 15 * 60
+    };
+  }
   async login(data: { email: string; password: string }) {
     const user = await prisma.user.findUnique({ where: { email: data.email, isActive: true } });
     if (!user || !await comparePassword(data.password, user.passwordHash)) {
