@@ -1,4 +1,4 @@
-cd import prisma from '../prisma';
+import prisma from '../prisma';
 
 export interface SearchFilters {
   query?: string;

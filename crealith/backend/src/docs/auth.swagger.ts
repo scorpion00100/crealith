@@ -76,6 +76,42 @@
 
 /**
  * @swagger
+ * /api/auth/google:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Initier l'authentification Google OAuth2
+ *     description: Redirige vers Google pour le consentement. Paramètre `redirect` optionnel pour la redirection finale.
+ *     parameters:
+ *       - in: query
+ *         name: redirect
+ *         schema:
+ *           type: string
+ *         description: URL de redirection finale autorisée (doit correspondre à FRONTEND_URL)
+ *     responses:
+ *       302:
+ *         description: Redirection vers Google OAuth2
+ *       400:
+ *         $ref: '#/components/responses/ValidationError'
+ */
+
+/**
+ * @swagger
+ * /api/auth/google/callback:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Callback de Google OAuth2
+ *     description: Après le consentement, Google redirige ici. Le backend crée/lie l'utilisateur, émet des JWT et redirige vers le frontend avec les tokens en fragment d'URL.
+ *     responses:
+ *       302:
+ *         description: Redirection frontend avec `#accessToken` et `#refreshToken`
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+
+/**
+ * @swagger
  * /api/auth/login:
  *   post:
  *     tags: [Authentication]

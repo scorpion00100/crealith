@@ -65,24 +65,40 @@ export const googleAuthRateLimit = rateLimit({
 
 // Middleware pour valider les URLs de redirection
 export const validateRedirectUrl = (req: Request, res: Response, next: NextFunction) => {
-  const redirectUrl = req.query.redirect as string;
-  
-  if (redirectUrl) {
-    // Liste des domaines autorisés
+  const rawQueryRedirect = req.query.redirect as string | undefined;
+  const rawBodyRedirect = (req.body && (req.body.redirect as string)) || undefined;
+  // Certains providers (Google) renvoient un param state que nous réutilisons pour rediriger
+  const rawStateRedirect = (req.query && (req.query.state as string)) || undefined;
+
+  const candidate = rawQueryRedirect || rawBodyRedirect || rawStateRedirect;
+
+  if (candidate) {
+    // Domaines autorisés: FRONTEND_URL + liste via env (séparée par des virgules)
+    const envAllowed = (process.env.ALLOWED_REDIRECT_ORIGINS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
     const allowedDomains = [
       process.env.FRONTEND_URL || 'http://localhost:3000',
       'http://localhost:3000',
       'https://crealith.com',
-      'https://www.crealith.com'
+      'https://www.crealith.com',
+      ...envAllowed
     ];
-    
+
     try {
-      const url = new URL(redirectUrl);
+      const url = new URL(candidate);
+
+      // En production, n'autoriser que HTTPS
+      if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+        throw createError.badRequest('Insecure redirect URL');
+      }
+
       const isAllowed = allowedDomains.some(domain => {
         const domainUrl = new URL(domain);
         return url.origin === domainUrl.origin;
       });
-      
+
       if (!isAllowed) {
         throw createError.badRequest('Invalid redirect URL');
       }
@@ -90,7 +106,7 @@ export const validateRedirectUrl = (req: Request, res: Response, next: NextFunct
       throw createError.badRequest('Invalid redirect URL format');
     }
   }
-  
+
   next();
 };
 
