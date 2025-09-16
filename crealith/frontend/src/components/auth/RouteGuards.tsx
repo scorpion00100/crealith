@@ -55,16 +55,14 @@ export const PublicRoute: React.FC<PublicRouteProps> = ({
     redirectTo = '/dashboard',
     allowAuthenticated = false
 }) => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const location = useLocation();
 
     // Si l'utilisateur est connecté et que la route n'autorise pas les utilisateurs connectés
     if (isAuthenticated && !allowAuthenticated) {
-        // Récupérer l'URL d'origine depuis l'état de navigation
-        const from = location.state?.from as string;
-        const redirectUrl = from && from !== '/login' && from !== '/register' ? from : redirectTo;
-
-        return <Navigate to={redirectUrl} replace />;
+        // Redirection basée sur le rôle pour éviter les accès non autorisés
+        const roleDefault = user?.role === 'SELLER' ? '/seller-dashboard' : user?.role === 'BUYER' ? '/buyer-dashboard' : redirectTo;
+        return <Navigate to={roleDefault} replace />;
     }
 
     return <>{children}</>;
@@ -74,7 +72,7 @@ export const PublicRoute: React.FC<PublicRouteProps> = ({
 export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     children,
     allowedRoles,
-    fallbackPath = '/unauthorized'
+    fallbackPath
 }) => {
     const { isAuthenticated, user } = useAuth();
     const location = useLocation();
@@ -86,7 +84,8 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
 
     // Vérifier le rôle
     if (!user || !allowedRoles.includes(user.role)) {
-        return <Navigate to={fallbackPath} replace />;
+        const roleDefault = user?.role === 'SELLER' ? '/seller-dashboard' : user?.role === 'BUYER' ? '/buyer-dashboard' : (fallbackPath || '/unauthorized');
+        return <Navigate to={roleDefault} replace />;
     }
 
     return <>{children}</>;

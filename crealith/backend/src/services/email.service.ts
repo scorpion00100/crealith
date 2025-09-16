@@ -24,18 +24,29 @@ class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<void> {
-    try {
-      await this.transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      });
-    } catch (error) {
-      console.error('Erreur envoi email:', error);
-      throw createError.internal('Erreur lors de l\'envoi de l\'email');
+    if (process.env.NODE_ENV === 'test') {
+      return; // No-op en test
     }
+    const attemptSend = async (retries: number, delayMs: number): Promise<void> => {
+      try {
+        await this.transporter.sendMail({
+          from: process.env.SMTP_FROM || process.env.SMTP_USER,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text,
+        });
+      } catch (error) {
+        if (retries > 0) {
+          const nextDelay = Math.min(delayMs * 2, 15000);
+          await new Promise(r => setTimeout(r, delayMs));
+          return attemptSend(retries - 1, nextDelay);
+        }
+        console.error('Erreur envoi email:', error);
+        throw createError.internal("Erreur lors de l'envoi de l'email");
+      }
+    };
+    return attemptSend(2, 500);
   }
 
   async sendVerificationEmail(email: string, token: string, firstName: string): Promise<void> {
@@ -102,6 +113,9 @@ class EmailService {
 
   async sendPasswordResetEmail(email: string, token: string, firstName: string): Promise<void> {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[DEV] Password reset URL:', resetUrl);
+    }
     
     const html = `
       <!DOCTYPE html>

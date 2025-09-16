@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAppSelector } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { setActiveMode } from '@/store/slices/authSlice';
+import { useAuth } from '@/contexts/AuthContext';
 import { SearchBar } from '@/components/ui/SearchBar';
 import {
   Home,
@@ -20,10 +22,12 @@ import {
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
+  const dispatch = useAppDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { isAuthenticated, user } = useAppSelector(state => state.auth);
+  const { isAuthenticated, user, logout } = useAuth();
   const { items: cartItems } = useAppSelector(state => state.cart);
+  const activeMode = useAppSelector(s => s.auth.activeMode);
 
   const cartItemsCount = cartItems.length;
 
@@ -118,9 +122,22 @@ export const Header: React.FC = () => {
                   <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center shadow-premium group-hover:shadow-medium">
                     <User className="w-3 h-3 text-white" />
                   </div>
-                  <span className="hidden sm:block text-gray-100 font-medium text-sm">
-                    {user?.firstName || 'Utilisateur'}
-                  </span>
+                  <div className="hidden sm:flex items-center gap-2">
+                    <span className="text-gray-100 font-medium text-sm">
+                      {user?.firstName || 'Utilisateur'}
+                    </span>
+                    {user?.role === 'SELLER' && (
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full border ${activeMode === 'SELLER'
+                          ? 'bg-primary-500/20 text-primary-300 border-primary-500/40'
+                          : 'bg-secondary-500/20 text-secondary-300 border-secondary-500/40'
+                          }`}
+                        title={`Mode actif: ${activeMode === 'SELLER' ? 'Vendeur' : 'Acheteur'}`}
+                      >
+                        {activeMode === 'SELLER' ? 'Mode Vendeur' : 'Mode Acheteur'}
+                      </span>
+                    )}
+                  </div>
                   <ChevronDown className="w-3 h-3 text-gray-500 group-hover:text-primary-400 transition-colors duration-300" />
                 </button>
 
@@ -133,29 +150,58 @@ export const Header: React.FC = () => {
 
                     <div className="py-2">
                       <Link
-                        to="/dashboard"
+                        to={activeMode === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard'}
                         className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                        onClick={() => setIsUserMenuOpen(false)}
                       >
                         <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
                         <span className="font-medium">Tableau de bord</span>
                       </Link>
+                      {user?.role === 'SELLER' && (
+                        <button
+                          onClick={() => {
+                            const next = activeMode === 'SELLER' ? 'BUYER' : 'SELLER';
+                            dispatch(setActiveMode(next as any));
+                            setIsUserMenuOpen(false);
+                            // Redirect according to the new mode
+                            window.location.href = next === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard';
+                          }}
+                          className="w-full text-left flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                        >
+                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                          <span className="font-medium">Passer en mode {activeMode === 'SELLER' ? 'Acheteur' : 'Vendeur'}</span>
+                        </button>
+                      )}
                       <Link
                         to="/profile"
                         className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                        onClick={() => setIsUserMenuOpen(false)}
                       >
                         <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
                         <span className="font-medium">Profil</span>
                       </Link>
                       <Link
-                        to="/orders"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-accent-400 transition-all duration-300 group"
+                        to="/settings"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                        onClick={() => setIsUserMenuOpen(false)}
                       >
-                        <div className="w-2 h-2 bg-accent-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Mes commandes</span>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Paramètres</span>
                       </Link>
+                      {user?.role !== 'SELLER' && (
+                        <Link
+                          to="/orders"
+                          className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-accent-400 transition-all duration-300 group"
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          <div className="w-2 h-2 bg-accent-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                          <span className="font-medium">Mes commandes</span>
+                        </Link>
+                      )}
                       <Link
                         to="/favorites"
                         className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                        onClick={() => setIsUserMenuOpen(false)}
                       >
                         <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
                         <span className="font-medium">Favoris</span>
@@ -163,7 +209,7 @@ export const Header: React.FC = () => {
                     </div>
 
                     <div className="border-t border-gray-700 pt-2">
-                      <button className="w-full text-left px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-error-400 transition-all duration-300 group">
+                      <button onClick={() => { logout(); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-error-400 transition-all duration-300 group">
                         <div className="w-2 h-2 bg-error-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
                         <span className="font-medium">Se déconnecter</span>
                       </button>

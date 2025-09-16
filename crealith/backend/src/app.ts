@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -8,6 +9,7 @@ import swaggerUi from 'swagger-ui-express';
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import routes from './routes';
+import cookieParser from 'cookie-parser';
 import healthRoutes from './routes/health.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { correlationIdMiddleware, requestLoggingMiddleware, securityAuditMiddleware, dataChangeAuditMiddleware } from './middleware/audit.middleware';
@@ -39,11 +41,11 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000', 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID', 'X-CSRF-Token']
 }));
 
 // Rate limiting
-app.use(rateLimit({ 
+app.use(process.env.NODE_ENV === 'test' ? ((req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => next()) : rateLimit({ 
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // limite par IP
   message: 'Too many requests from this IP, please try again later.',
@@ -52,9 +54,34 @@ app.use(rateLimit({
 }));
 
 // Middlewares de base
+// Parser robuste pour JSON (gère Buffer, string, ou JSON standard)
+const jsonTypes = ['application/json', 'application/*+json'];
+app.use(express.raw({ type: jsonTypes, limit: '50mb' }));
+app.use((req, res, next) => {
+  const contentType = (req.headers['content-type'] || '').toString();
+  if (!jsonTypes.some(t => contentType.includes(t))) return next();
+  if (Buffer.isBuffer(req.body)) {
+    try {
+      const text = req.body.length ? req.body.toString('utf8') : '';
+      req.body = text ? JSON.parse(text) : {};
+    } catch {
+      // Laisser express.json gérer ensuite
+    }
+  } else if (typeof req.body === 'string') {
+    try {
+      req.body = req.body.length ? JSON.parse(req.body) : {};
+    } catch {
+      // Laisser express.json gérer ensuite
+    }
+  }
+  return next();
+});
+// Support natif JSON pour les clients standards
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(compression());
+// Cookies (pour refresh token HttpOnly et CSRF)
+app.use(cookieParser());
 // Passport (no sessions, stateless JWT)
 app.use(passport.initialize());
 
@@ -81,6 +108,15 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 
 // Routes principales
 app.use('/api', routes);
+
+// Fichiers statiques pour les produits numériques uploadés (mock storage)
+const uploadsDir = path.join(process.cwd(), 'crealith', 'backend', 'uploads');
+app.use('/files', express.static(uploadsDir, {
+  maxAge: '1y',
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}));
 
 // Route 404
 app.use('*', (req, res) => {

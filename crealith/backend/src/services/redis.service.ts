@@ -317,6 +317,48 @@ class RedisService {
     }
   }
 
+  // Verrouillage temporaire des connexions (anti-bruteforce)
+  async registerLoginFailure(email: string): Promise<void> {
+    const keyBase = normalizeEmailForKey(email);
+    const failKey = RedisSecurityValidator.generateSecureKey('rate_limit', `login_fail_${keyBase}`);
+    const lockKey = RedisSecurityValidator.generateSecureKey('lock', `login_${keyBase}`);
+    try {
+      const locked = await this.redis.exists(lockKey);
+      if (locked) return;
+      const count = await this.redis.incr(failKey);
+      if (count === 1) {
+        await this.redis.expire(failKey, LOGIN_LOCK_MINUTES * 60);
+      }
+      if (count >= LOGIN_FAIL_LIMIT) {
+        await this.redis.set(lockKey, '1', 'EX', LOGIN_LOCK_MINUTES * 60);
+      }
+    } catch (error) {
+      SecureLogger.error('Error registering login failure', error, { email: keyBase.substring(0, 3) + '***' });
+    }
+  }
+
+  async resetLoginFailures(email: string): Promise<void> {
+    const keyBase = normalizeEmailForKey(email);
+    const failKey = RedisSecurityValidator.generateSecureKey('rate_limit', `login_fail_${keyBase}`);
+    try {
+      await this.redis.del(failKey);
+    } catch (error) {
+      SecureLogger.error('Error resetting login failures', error, { email: keyBase.substring(0, 3) + '***' });
+    }
+  }
+
+  async isLoginLocked(email: string): Promise<boolean> {
+    const keyBase = normalizeEmailForKey(email);
+    const lockKey = RedisSecurityValidator.generateSecureKey('lock', `login_${keyBase}`);
+    try {
+      const locked = await this.redis.exists(lockKey);
+      return locked === 1;
+    } catch (error) {
+      SecureLogger.error('Error checking login lock', error, { email: keyBase.substring(0, 3) + '***' });
+      return false;
+    }
+  }
+
   // Gestion des tokens de réinitialisation de mot de passe
   async storeResetToken(email: string, token: string, expiresIn: number = 60 * 60): Promise<void> {
     try {
@@ -538,3 +580,19 @@ class RedisService {
 }
 
 export const redisService = new RedisService();
+const normalizeEmailForKey = (email: string): string => {
+  try {
+    const [local, domain] = email.trim().toLowerCase().split('@');
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+      const plusIndex = local.indexOf('+');
+      const base = (plusIndex === -1 ? local : local.substring(0, plusIndex)).replace(/\./g, '');
+      return `${base}@gmail.com`;
+    }
+    return `${local}@${domain}`;
+  } catch {
+    return email;
+  }
+};
+
+const LOGIN_FAIL_LIMIT = 5; // tentatives
+const LOGIN_LOCK_MINUTES = 15; // minutes

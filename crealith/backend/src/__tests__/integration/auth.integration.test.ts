@@ -24,9 +24,13 @@ describe('Auth Integration Tests', () => {
   afterAll(async () => {
     // Nettoyer après les tests
     if (testUser) {
-      await prisma.user.delete({
-        where: { id: testUser.id }
-      });
+      try {
+        await prisma.user.delete({
+          where: { id: testUser.id }
+        });
+      } catch (e) {
+        // Si déjà supprimé ou inexistant, ignorer pour stabiliser les tests
+      }
     }
     await prisma.$disconnect();
   });
@@ -122,6 +126,8 @@ describe('Auth Integration Tests', () => {
       expect(response.body).toHaveProperty('accessToken');
       expect(response.body).toHaveProperty('refreshToken');
       expect(response.body.user.email).toBe(loginData.email);
+      // Utiliser le dernier refreshToken émis (post-login) pour les tests suivants
+      refreshToken = response.body.refreshToken;
     });
 
     it('should fail to login with invalid credentials', async () => {
@@ -155,6 +161,13 @@ describe('Auth Integration Tests', () => {
 
   describe('POST /api/auth/refresh', () => {
     it('should refresh access token with valid refresh token', async () => {
+      // Garantir un refreshToken récent en (re)faisant un login juste avant
+      const relogin = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com', password: 'TestPassword123!' })
+        .expect(200);
+      refreshToken = relogin.body.refreshToken;
+
       const response = await request(app)
         .post('/api/auth/refresh')
         .send({ refreshToken })
@@ -163,6 +176,8 @@ describe('Auth Integration Tests', () => {
       expect(response.body).toHaveProperty('accessToken');
       expect(response.body).toHaveProperty('refreshToken');
       expect(response.body.accessToken).not.toBe(accessToken);
+      // Mettre à jour le refreshToken rotaté renvoyé
+      refreshToken = response.body.refreshToken;
     });
 
     it('should fail to refresh with invalid refresh token', async () => {
@@ -177,6 +192,13 @@ describe('Auth Integration Tests', () => {
 
   describe('POST /api/auth/logout', () => {
     it('should logout successfully with valid refresh token', async () => {
+      // Refaire un login juste avant pour avoir un refreshToken valide et non rotaté
+      const relogin = await request(app)
+        .post('/api/auth/login')
+        .send({ email: 'test@example.com', password: 'TestPassword123!' })
+        .expect(200);
+      refreshToken = relogin.body.refreshToken;
+
       const response = await request(app)
         .post('/api/auth/logout')
         .send({ refreshToken })

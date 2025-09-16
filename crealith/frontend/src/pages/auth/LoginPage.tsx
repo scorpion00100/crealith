@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { authService } from '@/services/auth.service';
 import { addNotification } from '@/store/slices/uiSlice';
 import { useAppDispatch } from '@/store';
 import '../../styles/auth/login.css';
@@ -85,15 +86,23 @@ export const LoginPage: React.FC = () => {
     try {
       await login(formData);
 
+      // Récupérer le profil pour déterminer la redirection (SELLER/BUYER)
+      const profile = await authService.getProfile();
+
       dispatch(addNotification({
         type: 'success',
         message: 'Connexion réussie !',
         duration: 3000,
       }));
 
-      // Rediriger vers la page demandée ou le dashboard
-      const redirectTo = searchParams.get('redirect') || '/dashboard';
-      navigate(redirectTo);
+      // Redirection basée sur le rôle utilisateur
+      const requested = searchParams.get('redirect');
+      if (requested) {
+        navigate(requested);
+      } else {
+        const roleRoute = profile?.role === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard';
+        navigate(roleRoute);
+      }
     } catch (error: any) {
       dispatch(addNotification({
         type: 'error',

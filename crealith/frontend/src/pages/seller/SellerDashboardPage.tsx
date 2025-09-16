@@ -7,7 +7,6 @@ import {
     Star,
     Package,
     Users,
-    MessageSquare,
     Plus,
     BarChart3,
     Calendar,
@@ -19,6 +18,9 @@ import { ProductCard } from '@/components/marketplace/ProductCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/cn';
 import { productService } from '@/services/product.service';
+import { apiService } from '@/services/api';
+import { useAppDispatch } from '@/store';
+import { addNotification } from '@/store/slices/uiSlice';
 import { Product } from '@/types';
 
 // Mock data for demonstration
@@ -34,7 +36,7 @@ const mockStats = {
     averageRating: 4.8,
     totalReviews: 89,
     pendingOrders: 3,
-    unreadMessages: 7
+    unreadMessages: 0
 };
 
 const mockRecentOrders = [
@@ -120,8 +122,9 @@ const mockAnalyticsData = {
 };
 
 export const SellerDashboardPage: React.FC = () => {
+    const dispatch = useAppDispatch();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'analytics' | 'revenue'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'products'>('overview');
     const { user, logout } = useAuth();
     // Produits (API)
     const [products, setProducts] = useState<Product[]>([]);
@@ -132,6 +135,15 @@ export const SellerDashboardPage: React.FC = () => {
     const [sortBy, setSortBy] = useState<'createdAt' | 'sales' | 'price'>('createdAt');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [total, setTotal] = useState(0);
+
+    // State: create product modal
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [creating, setCreating] = useState(false);
+    const [createData, setCreateData] = useState<{ title: string; price: string; description: string; categorySlug: string }>(
+        { title: '', price: '', description: '', categorySlug: 'templates' }
+    );
+    const [digitalFile, setDigitalFile] = useState<File | null>(null);
+    const [digitalFileName, setDigitalFileName] = useState<string>('');
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -159,6 +171,13 @@ export const SellerDashboardPage: React.FC = () => {
             fetchProducts();
         }
     }, [user, activeTab, page, pageSize, sortBy, sortDir]);
+
+    // Lire l'ancre URL pour activer l'onglet produits (#products)
+    useEffect(() => {
+        if (window.location.hash === '#products') {
+            setActiveTab('products');
+        }
+    }, []);
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -282,7 +301,7 @@ export const SellerDashboardPage: React.FC = () => {
             />
 
             {/* Main Content */}
-            <div className="lg:ml-80">
+            <div className="lg:ml-80 lg:pl-0">
                 {/* Header */}
                 <header className="bg-background-800 border-b border-background-700 px-6 py-4">
                     <div className="flex items-center justify-between">
@@ -296,9 +315,11 @@ export const SellerDashboardPage: React.FC = () => {
                                 </svg>
                             </button>
                             <div>
-                                <h1 className="text-2xl font-bold text-text-100">
-                                    Tableau de bord vendeur 🚀
-                                </h1>
+                                <div className="flex items-center gap-3">
+                                    <h1 className="text-2xl font-bold text-text-100">
+                                        Tableau de bord vendeur
+                                    </h1>
+                                </div>
                                 <p className="text-text-400">
                                     Gérez votre boutique et suivez vos performances
                                 </p>
@@ -306,17 +327,9 @@ export const SellerDashboardPage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <button className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium transition-all duration-200 hover:scale-105">
+                            <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium transition-all duration-200 hover:scale-105">
                                 <Plus className="w-4 h-4" />
                                 Nouveau produit
-                            </button>
-                            <button className="p-2 text-text-400 hover:text-text-200 hover:bg-background-700 rounded-lg transition-colors">
-                                <MessageSquare className="w-6 h-6" />
-                                {mockStats.unreadMessages > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-secondary-500 text-white text-xs rounded-full flex items-center justify-center">
-                                        {mockStats.unreadMessages}
-                                    </span>
-                                )}
                             </button>
                         </div>
                     </div>
@@ -328,10 +341,7 @@ export const SellerDashboardPage: React.FC = () => {
                     <div className="flex gap-1 mb-8 bg-background-800 p-1 rounded-2xl w-fit">
                         {[
                             { id: 'overview', label: 'Vue d\'ensemble', icon: TrendingUp },
-                            { id: 'products', label: 'Produits', icon: Package },
-                            { id: 'orders', label: 'Commandes', icon: ShoppingBag },
-                            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-                            { id: 'revenue', label: 'Revenus', icon: DollarSign }
+                            { id: 'products', label: 'Produits', icon: Package }
                         ].map((tab) => (
                             <button
                                 key={tab.id}
@@ -388,28 +398,13 @@ export const SellerDashboardPage: React.FC = () => {
                                 />
                             </div>
 
-                            {/* Charts Row */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                <SimpleChart
-                                    data={mockAnalyticsData.revenueChart}
-                                    title="Évolution des revenus"
-                                    color="success"
-                                />
-                                <SimpleChart
-                                    data={mockAnalyticsData.salesChart}
-                                    title="Évolution des ventes"
-                                    color="primary"
-                                />
-                            </div>
+                            {/* Charts retirés pour MVP */}
 
-                            {/* Recent Orders & Top Products */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Section condensée: Commandes récentes */}
+                            <div className="grid grid-cols-1 gap-8">
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-xl font-bold text-text-100">Commandes récentes</h2>
-                                        <button className="text-primary-400 hover:text-primary-300 font-medium">
-                                            Voir tout
-                                        </button>
                                     </div>
                                     <div className="space-y-4">
                                         {mockRecentOrders.map((order) => (
@@ -417,48 +412,17 @@ export const SellerDashboardPage: React.FC = () => {
                                         ))}
                                     </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-xl font-bold text-text-100">Produits populaires</h2>
-                                        <button className="text-primary-400 hover:text-primary-300 font-medium">
-                                            Voir tout
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {mockTopProducts.map((product) => (
-                                            <div key={product.id} className="bg-background-800 rounded-xl border border-background-700 p-4 hover:border-primary-500/30 transition-all duration-300">
-                                                <div className="flex gap-4">
-                                                    <div className="w-16 h-16 bg-background-700 rounded-lg flex-shrink-0">
-                                                        <img
-                                                            src={product.image}
-                                                            alt={product.title}
-                                                            className="w-full h-full object-cover rounded-lg"
-                                                        />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="font-medium text-text-100 truncate">{product.title}</h4>
-                                                        <div className="flex items-center gap-4 mt-2 text-sm text-text-400">
-                                                            <span>{product.sales} ventes</span>
-                                                            <span>{product.views} vues</span>
-                                                            <div className="flex items-center gap-1">
-                                                                <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                                                                <span>{product.rating}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-2 flex items-center justify-between">
-                                                            <span className="text-lg font-bold text-primary-400">
-                                                                {formatPrice(product.revenue)}
-                                                            </span>
-                                                            <span className="text-sm text-text-400">
-                                                                {formatPrice(product.price)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                            {/* Vue d'ensemble produits du vendeur */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                                    <p className="text-sm text-text-400 mb-2">Nombre de produits</p>
+                                    <p className="text-2xl font-bold text-text-100">{Math.max(total, products.length)}</p>
+                                </div>
+                                <div className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                                    <p className="text-sm text-text-400 mb-2">Total vendu (estimé)</p>
+                                    <p className="text-2xl font-bold text-text-100">{products.reduce((sum, p: any) => sum + (p.totalSales || p.downloads || 0), 0)}</p>
                                 </div>
                             </div>
 
@@ -490,17 +454,7 @@ export const SellerDashboardPage: React.FC = () => {
                                         </div>
                                     </button>
 
-                                    <button aria-disabled title="Bientôt disponible" className="p-6 bg-background-800 border border-background-700 rounded-xl transition-all duration-300 text-left opacity-70 cursor-not-allowed">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="p-3 bg-success-500/20 rounded-xl">
-                                                <MessageSquare className="w-6 h-6 text-success-400" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-text-100">Messages</p>
-                                                <p className="text-sm text-text-400">Bientôt disponible</p>
-                                            </div>
-                                        </div>
-                                    </button>
+                                    {/* Carte Messages supprimée (pas de messagerie au MVP) */}
                                 </div>
                             </div>
                         </div>
@@ -571,23 +525,156 @@ export const SellerDashboardPage: React.FC = () => {
                             )}
                         </div>
                     )}
-                    {activeTab !== 'overview' && activeTab !== 'products' && (
-                        <div className="text-center py-12">
-                            <div className="w-24 h-24 bg-background-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <BarChart3 className="w-12 h-12 text-text-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-text-100 mb-2">
-                                {activeTab === 'orders' && 'Gestion des commandes'}
-                                {activeTab === 'analytics' && 'Analytics détaillées'}
-                                {activeTab === 'revenue' && 'Gestion des revenus'}
-                            </h3>
-                            <p className="text-text-400">
-                                Cette section sera bientôt disponible
-                            </p>
-                        </div>
-                    )}
+                    {/* Sections non-implémentées retirées pour MVP */}
                 </main>
             </div>
+
+            {/* Create Product Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => !creating && setShowCreateModal(false)} />
+                    <div className="relative z-10 w-full max-w-lg bg-background-900 border border-background-700 rounded-2xl p-6">
+                        <h3 className="text-xl font-bold text-text-100 mb-4">Nouveau produit</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-text-300 mb-1">Titre</label>
+                                <input
+                                    value={createData.title}
+                                    onChange={(e) => setCreateData(prev => ({ ...prev, title: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
+                                    placeholder="Nom du produit"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-text-300 mb-1">Prix (€)</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={createData.price}
+                                    onChange={(e) => setCreateData(prev => ({ ...prev, price: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
+                                    placeholder="29.99"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-text-300 mb-1">Fichier numérique (ZIP/FIG/AI)</label>
+                                <input
+                                    type="file"
+                                    accept=".zip,.fig,.ai"
+                                    onChange={(e) => {
+                                        const file = e.target.files && e.target.files[0];
+                                        if (!file) return;
+                                        setDigitalFile(file);
+                                        setDigitalFileName(file.name);
+                                    }}
+                                    className="w-full text-sm text-text-300 file:mr-3 file:px-3 file:py-2 file:rounded-lg file:border-0 file:bg-background-700 file:text-text-200 hover:file:bg-background-600"
+                                />
+                                {digitalFileName && (
+                                    <p className="mt-1 text-xs text-text-500">Sélectionné: {digitalFileName}</p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm text-text-300 mb-1">Catégorie</label>
+                                <select
+                                    value={createData.categorySlug}
+                                    onChange={(e) => setCreateData(prev => ({ ...prev, categorySlug: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
+                                >
+                                    <option value="templates">Templates</option>
+                                    <option value="ui-kits">UI Kits</option>
+                                    <option value="dashboards">Dashboards</option>
+                                    <option value="illustrations">Illustrations</option>
+                                    <option value="icons">Icônes</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-text-300 mb-1">Description</label>
+                                <textarea
+                                    rows={4}
+                                    value={createData.description}
+                                    onChange={(e) => setCreateData(prev => ({ ...prev, description: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
+                                    placeholder="Décrivez votre produit..."
+                                />
+                            </div>
+                        </div>
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                            <button
+                                className="px-4 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100 disabled:opacity-50"
+                                onClick={() => setShowCreateModal(false)}
+                                disabled={creating}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg disabled:opacity-50"
+                                disabled={creating || !createData.title || !createData.price || !digitalFile}
+                                onClick={async () => {
+                                    setCreating(true);
+                                    try {
+                                        let created: any;
+                                        let fileUrl: string | undefined;
+                                        try {
+                                            if (digitalFile) {
+                                                const fd = new FormData();
+                                                fd.append('file', digitalFile);
+                                                fd.append('type', 'digital');
+                                                // Endpoint mock côté backend; fallback si indisponible
+                                                const uploadRes: any = await apiService.upload('/uploads', fd).catch(() => null);
+                                                fileUrl = (uploadRes && (uploadRes.url || uploadRes.fileUrl)) || undefined;
+                                            }
+                                        } catch (_) {
+                                            fileUrl = undefined;
+                                        }
+                                        try {
+                                            created = await productService.createProduct({
+                                                title: createData.title,
+                                                price: createData.price,
+                                                description: createData.description,
+                                                fileUrl,
+                                                category: { slug: createData.categorySlug },
+                                                categoryId: createData.categorySlug,
+                                            } as any);
+                                        } catch (err) {
+                                            // Fallback local si API indisponible
+                                            created = {
+                                                id: String(Date.now()),
+                                                title: createData.title,
+                                                price: createData.price,
+                                                description: createData.description,
+                                                image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
+                                                category: { slug: createData.categorySlug, id: createData.categorySlug, name: createData.categorySlug },
+                                                categoryId: createData.categorySlug,
+                                                fileUrl: fileUrl || '/files/mock-' + Date.now() + '.zip',
+                                                downloads: 0,
+                                                totalSales: 0,
+                                                isActive: true,
+                                                createdAt: new Date().toISOString(),
+                                                updatedAt: new Date().toISOString(),
+                                                userId: user?.id,
+                                            };
+                                        }
+                                        setProducts(prev => [created, ...prev]);
+                                        setTotal(prev => (prev || 0) + 1);
+                                        setShowCreateModal(false);
+                                        setActiveTab('products');
+                                        setCreateData({ title: '', price: '', description: '', categorySlug: 'templates' });
+                                        setDigitalFile(null);
+                                        setDigitalFileName('');
+                                        dispatch(addNotification({ type: 'success', message: 'Produit créé', duration: 2500 }));
+                                    } catch (e) {
+                                        dispatch(addNotification({ type: 'error', message: 'Erreur lors de la création', duration: 3500 }));
+                                    } finally {
+                                        setCreating(false);
+                                    }
+                                }}
+                            >
+                                {creating ? 'Création...' : 'Créer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

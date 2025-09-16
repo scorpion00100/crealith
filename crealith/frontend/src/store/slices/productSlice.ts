@@ -343,6 +343,18 @@ const initialState: ProductState = {
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
   async (filters?: ProductFilters) => {
+    // Pour le MVP, utiliser directement les données de démonstration
+    // TODO: Remplacer par l'appel API quand le backend sera prêt
+    console.log('Using demo products data for MVP');
+    return {
+      products: initialState.items,
+      page: 1,
+      total: initialState.items.length,
+      totalPages: 1
+    };
+    
+    // Code API commenté pour le moment
+    /*
     try {
       const response = await productService.getProducts(filters);
       return response;
@@ -356,14 +368,26 @@ export const fetchProducts = createAsyncThunk(
         totalPages: 1
       };
     }
+    */
   }
 );
 
 export const fetchProductById = createAsyncThunk(
   'products/fetchProductById',
   async (id: string) => {
+    // Pour le MVP, utiliser les données de démonstration
+    // TODO: Remplacer par l'appel API quand le backend sera prêt
+    const product = initialState.items.find(p => p.id === id);
+    if (product) {
+      return product;
+    }
+    throw new Error('Product not found');
+    
+    // Code API commenté pour le moment
+    /*
     const response = await productService.getProductById(id);
     return response;
+    */
   }
 );
 

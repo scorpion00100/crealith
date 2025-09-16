@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchProductById } from '@/store/slices/productSlice';
 import { addToCartAsync } from '@/store/slices/cartSlice';
 import { addNotification } from '@/store/slices/uiSlice';
+import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { Star, Download, Heart, Share2, Eye, ShoppingCart } from 'lucide-react';
@@ -52,7 +53,7 @@ export const ProductDetailPage: React.FC = () => {
         }
     };
 
-    const handleToggleFavorite = () => {
+    const handleToggleFavorite = async () => {
         if (!isAuthenticated) {
             dispatch(addNotification({
                 type: 'warning',
@@ -63,12 +64,19 @@ export const ProductDetailPage: React.FC = () => {
             return;
         }
 
-        setIsFavorite(!isFavorite);
-        dispatch(addNotification({
-            type: 'success',
-            message: isFavorite ? 'Retiré des favoris' : 'Ajouté aux favoris',
-            duration: 2000
-        }));
+        try {
+            if (!isFavorite) {
+                await dispatch(addFavoriteAsync(id!)).unwrap();
+                setIsFavorite(true);
+                dispatch(addNotification({ type: 'success', message: 'Ajouté aux favoris', duration: 2000 }));
+            } else {
+                await dispatch(removeFavoriteAsync(id!)).unwrap();
+                setIsFavorite(false);
+                dispatch(addNotification({ type: 'info', message: 'Retiré des favoris', duration: 2000 }));
+            }
+        } catch (error) {
+            dispatch(addNotification({ type: 'error', message: 'Erreur favoris', duration: 3000 }));
+        }
     };
 
     const handleBuyNow = () => {
@@ -407,13 +415,13 @@ export const ProductDetailPage: React.FC = () => {
                                         <div className="detail-item">
                                             <span className="detail-label">Date de publication</span>
                                             <span className="detail-value">
-                                                {new Date(currentProduct.createdAt).toLocaleDateString('fr-FR')}
+                                                {currentProduct.createdAt ? new Date(currentProduct.createdAt).toLocaleDateString('fr-FR') : '—'}
                                             </span>
                                         </div>
                                         <div className="detail-item">
                                             <span className="detail-label">Dernière mise à jour</span>
                                             <span className="detail-value">
-                                                {new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR')}
+                                                {currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}
                                             </span>
                                         </div>
                                     </div>

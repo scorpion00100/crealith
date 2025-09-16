@@ -8,6 +8,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  activeMode: 'BUYER' | 'SELLER';
 }
 
 const initialState: AuthState = {
@@ -16,6 +17,12 @@ const initialState: AuthState = {
   isAuthenticated: authService.isAuthenticated(),
   isLoading: false,
   error: null,
+  activeMode: ((): 'BUYER' | 'SELLER' => {
+    const stored = localStorage.getItem('crealith_active_mode');
+    if (stored === 'BUYER' || stored === 'SELLER') return stored;
+    const user = authService.getCurrentUser();
+    return user?.role === 'SELLER' ? 'SELLER' : 'BUYER';
+  })(),
 };
 
 export const loginUser = createAsyncThunk(
@@ -64,6 +71,7 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       state.error = null;
+      state.activeMode = 'BUYER';
     },
     clearError: (state) => {
       state.error = null;
@@ -72,6 +80,16 @@ const authSlice = createSlice({
       if (state.user) {
         state.user = { ...state.user, ...action.payload };
       }
+    },
+    setActiveMode: (state, action: PayloadAction<'BUYER' | 'SELLER'>) => {
+      // Only sellers can switch to SELLER
+      if (action.payload === 'SELLER' && state.user?.role !== 'SELLER') {
+        state.activeMode = 'BUYER';
+        localStorage.setItem('crealith_active_mode', 'BUYER');
+        return;
+      }
+      state.activeMode = action.payload;
+      localStorage.setItem('crealith_active_mode', action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -84,9 +102,17 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.token = (action.payload as any).accessToken || null;
         state.isAuthenticated = true;
         state.error = null;
+        // Initialize activeMode based on role or storage
+        const stored = localStorage.getItem('crealith_active_mode');
+        if (stored === 'BUYER' || stored === 'SELLER') {
+          state.activeMode = stored as any;
+        } else {
+          state.activeMode = action.payload.user.role === 'SELLER' ? 'SELLER' : 'BUYER';
+          localStorage.setItem('crealith_active_mode', state.activeMode);
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -100,7 +126,7 @@ const authSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action: PayloadAction<AuthResponse>) => {
         state.isLoading = false;
         state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.token = (action.payload as any).accessToken || null;
         state.isAuthenticated = true;
         state.error = null;
       })
@@ -115,6 +141,11 @@ const authSlice = createSlice({
       .addCase(fetchUserProfile.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
         state.user = action.payload;
+        // Ensure activeMode remains valid
+        if (state.activeMode === 'SELLER' && action.payload.role !== 'SELLER') {
+          state.activeMode = 'BUYER';
+          localStorage.setItem('crealith_active_mode', 'BUYER');
+        }
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.isLoading = false;
@@ -124,4 +155,5 @@ const authSlice = createSlice({
 });
 
 export const { logout, clearError, updateUser } = authSlice.actions;
+export const { setActiveMode } = authSlice.actions as any;
 export default authSlice.reducer;

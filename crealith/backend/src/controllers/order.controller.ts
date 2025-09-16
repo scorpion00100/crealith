@@ -1,118 +1,21 @@
 import { Request, Response } from 'express';
+import { OrderService } from '../services/order.service';
+
+const orderService = new OrderService();
 
 export const orderController = {
   // Récupérer les commandes de l'utilisateur
   async getUserOrders(req: Request, res: Response) {
     try {
-      const userId = req.user?.userId;
-      const { page = 1, limit = 10, status, search, dateFrom, dateTo } = req.query;
+      const userId = req.user?.userId as string;
+      const role = req.user?.role as string;
 
-      // TODO: Remplacer par de vraies requêtes Prisma
-      const mockOrders = [
-        {
-          id: '1',
-          orderNumber: 'ORD-2024-001',
-          totalAmount: 29.99,
-          status: 'DELIVERED',
-          createdAt: '2024-06-15T10:30:00Z',
-          updatedAt: '2024-06-15T14:45:00Z',
-          items: [
-            {
-              id: 'item-1',
-              quantity: 1,
-              price: 29.99,
-              product: {
-                id: 'prod-1',
-                title: 'Template WordPress Premium',
-                thumbnailUrl: 'https://via.placeholder.com/300x200?text=Template+WP',
-                fileUrl: 'https://example.com/files/template-wp.zip',
-                downloadsCount: 120
-              }
-            }
-          ]
-        },
-        {
-          id: '2',
-          orderNumber: 'ORD-2024-002',
-          totalAmount: 19.99,
-          status: 'PAID',
-          createdAt: '2024-06-10T09:15:00Z',
-          updatedAt: '2024-06-10T09:15:00Z',
-          items: [
-            {
-              id: 'item-2',
-              quantity: 1,
-              price: 19.99,
-              product: {
-                id: 'prod-2',
-                title: 'Pack Icônes Vectorielles',
-                thumbnailUrl: 'https://via.placeholder.com/300x200?text=Icons+Pack',
-                fileUrl: 'https://example.com/files/icons-pack.zip',
-                downloadsCount: 85
-              }
-            }
-          ]
-        },
-        {
-          id: '3',
-          orderNumber: 'ORD-2024-003',
-          totalAmount: 14.99,
-          status: 'PENDING',
-          createdAt: '2024-06-05T16:20:00Z',
-          updatedAt: '2024-06-05T16:20:00Z',
-          items: [
-            {
-              id: 'item-3',
-              quantity: 1,
-              price: 14.99,
-              product: {
-                id: 'prod-3',
-                title: 'E-book Marketing Digital',
-                thumbnailUrl: 'https://via.placeholder.com/300x200?text=E-book',
-                fileUrl: 'https://example.com/files/ebook-marketing.pdf',
-                downloadsCount: 0
-              }
-            }
-          ]
-        }
-      ];
+      const orders = await orderService.getOrders(userId, role);
 
-      // Filtrage mock
-      let filteredOrders = mockOrders;
-      
-      if (status) {
-        filteredOrders = filteredOrders.filter(order => order.status === status);
-      }
-      
-      if (search) {
-        const searchLower = search.toString().toLowerCase();
-        filteredOrders = filteredOrders.filter(order =>
-          order.items.some(item => 
-            item.product.title.toLowerCase().includes(searchLower) ||
-            order.orderNumber.toLowerCase().includes(searchLower)
-          )
-        );
-      }
-
-      // Pagination mock
-      const startIndex = (Number(page) - 1) * Number(limit);
-      const endIndex = startIndex + Number(limit);
-      const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
-
-      const pagination = {
-        page: Number(page),
-        limit: Number(limit),
-        total: filteredOrders.length,
-        totalPages: Math.ceil(filteredOrders.length / Number(limit))
-      };
-
-      res.json({
-        orders: paginatedOrders,
-        pagination
-      });
+      res.json({ success: true, data: orders });
     } catch (error) {
       console.error('Erreur récupération commandes:', error);
-      res.status(500).json({ message: 'Erreur lors du chargement des commandes' });
+      res.status(500).json({ success: false, message: 'Erreur lors du chargement des commandes' });
     }
   },
 
@@ -156,24 +59,27 @@ export const orderController = {
   // Créer une nouvelle commande
   async createOrder(req: Request, res: Response) {
     try {
-      const userId = req.user?.userId;
-      const { items, paymentMethod } = req.body;
+      const userId = req.user?.userId as string;
+      const { paymentMethod } = req.body as { paymentMethod: string };
 
-      // TODO: Implémenter la logique de création de commande avec Stripe
-      const mockOrder = {
-        id: 'new-order-id',
-        orderNumber: 'ORD-2024-004',
-        totalAmount: 49.98,
-        status: 'PENDING',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        items: items
-      };
+      const { order, paymentIntent } = await orderService.createOrder({ userId, items: [], paymentMethod });
 
-      res.status(201).json(mockOrder);
+      res.status(201).json({ success: true, data: { order, clientSecret: paymentIntent.client_secret } });
     } catch (error) {
       console.error('Erreur création commande:', error);
-      res.status(500).json({ message: 'Erreur lors de la création de la commande' });
+      res.status(500).json({ success: false, message: 'Erreur lors de la création de la commande' });
+    }
+  },
+
+  // Confirmer une commande après paiement Stripe
+  async confirmOrder(req: Request, res: Response) {
+    try {
+      const { orderId, paymentIntentId } = req.body as { orderId: string; paymentIntentId: string };
+      const order = await orderService.confirmOrder(orderId, paymentIntentId);
+      res.json({ success: true, data: order });
+    } catch (error) {
+      console.error('Erreur confirmation commande:', error);
+      res.status(400).json({ success: false, message: 'Erreur lors de la confirmation de la commande' });
     }
   },
 

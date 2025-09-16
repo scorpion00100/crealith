@@ -15,32 +15,32 @@ import {
 
 export const AboutPage: React.FC = () => {
     const stats = [
-        { icon: Users, value: '5,000+', label: 'Créateurs actifs' },
-        { icon: Star, value: '50,000+', label: 'Téléchargements' },
-        { icon: Globe, value: '120+', label: 'Pays représentés' },
-        { icon: Award, value: '4.9/5', label: 'Note moyenne' }
+        { icon: Users, value: 'Projet solo', label: 'Par Dan Bethel IRYIVUZE' },
+        { icon: Star, value: 'Qualité', label: 'UX/UI moderne' },
+        { icon: Globe, value: 'Toulouse', label: 'France' },
+        { icon: Award, value: 'Engagé', label: 'Satisfaction utilisateurs' }
     ];
 
     const values = [
         {
             icon: Heart,
             title: 'Passion',
-            description: 'Nous croyons en la puissance de la créativité et de l\'innovation pour transformer le monde digital.'
+            description: 'Je conçois une expérience fluide et élégante pour les créateurs et acheteurs.'
         },
         {
             icon: Users,
             title: 'Communauté',
-            description: 'Nous construisons un écosystème où créateurs et acheteurs peuvent collaborer et s\'épanouir.'
+            description: 'Construire un écosystème bienveillant qui valorise les talents.'
         },
         {
             icon: Award,
             title: 'Excellence',
-            description: 'Nous nous engageons à offrir des produits de qualité supérieure et une expérience utilisateur exceptionnelle.'
+            description: 'Code propre, typé et maintenable; design soigné et accessible.'
         },
         {
             icon: Globe,
-            title: 'Accessibilité',
-            description: 'Nous rendons la créativité accessible à tous, partout dans le monde, à des prix équitables.'
+            title: 'Transparence',
+            description: 'Communication directe, délais clairs et priorités partagées.'
         }
     ];
 
@@ -84,8 +84,9 @@ export const AboutPage: React.FC = () => {
                         </h1>
 
                         <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-                            Nous sommes la plateforme qui connecte les créateurs talentueux du monde entier
-                            avec des acheteurs passionnés, créant un écosystème florissant pour l'innovation digitale.
+                            Crealith est un projet indépendant porté par <strong>Dan Bethel IRYIVUZE</strong>,
+                            basé à <strong>Toulouse, France</strong>. Objectif: une marketplace moderne et stable
+                            pour découvrir, acheter et vendre des produits digitaux de qualité.
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-6 justify-center">
@@ -165,22 +166,19 @@ export const AboutPage: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                         <div>
                             <h2 className="responsive-heading font-black text-gradient-primary mb-6">
-                                Notre Histoire
+                                Mon Histoire
                             </h2>
                             <div className="space-y-6 text-gray-300">
                                 <p className="text-lg leading-relaxed">
-                                    Fondée en 2023, Crealith est née d'une vision simple : créer un pont entre
-                                    les créateurs talentueux et les acheteurs passionnés dans l'univers digital.
+                                    Crealith est né d’une envie: simplifier l’accès à des créations digitales
+                                    fiables, bien présentées et prêtes à l’emploi.
                                 </p>
                                 <p className="text-lg leading-relaxed">
-                                    Nous avons constaté que de nombreux créateurs avaient du mal à monétiser
-                                    leurs œuvres, tandis que les acheteurs cherchaient des produits de qualité
-                                    sans savoir où les trouver.
+                                    En tant que développeur full‑stack, je construis le produit étape par étape,
+                                    sans jamais casser l’existant, en priorisant un MVP complet et utilisable.
                                 </p>
                                 <p className="text-lg leading-relaxed">
-                                    Aujourd'hui, nous sommes fiers d'être devenus la référence pour l'achat
-                                    et la vente de produits digitaux créatifs, avec une communauté grandissante
-                                    de plus de 5,000 créateurs actifs.
+                                    Vous pouvez me contacter directement: <a className="text-primary-400" href="mailto:danbetheliryivuze@gmail.com">danbetheliryivuze@gmail.com</a> · <a className="text-primary-400" href="tel:+33609409359">+33 6 09 40 93 59</a>.
                                 </p>
                             </div>
                         </div>
@@ -191,8 +189,8 @@ export const AboutPage: React.FC = () => {
                                     <div className="w-32 h-32 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-premium">
                                         <Zap className="w-16 h-16 text-white" />
                                     </div>
-                                    <h3 className="text-2xl font-bold text-gray-100 mb-2">2023</h3>
-                                    <p className="text-gray-300">Année de création</p>
+                                    <h3 className="text-2xl font-bold text-gray-100 mb-2">Projet indépendant</h3>
+                                    <p className="text-gray-300">Développé avec soin à Toulouse</p>
                                 </div>
                             </div>
                         </div>
@@ -205,32 +203,26 @@ export const AboutPage: React.FC = () => {
                 <div className="container-custom">
                     <div className="text-center mb-16">
                         <h2 className="responsive-heading font-black text-gradient-secondary mb-6">
-                            Notre Équipe
+                            Contact direct
                         </h2>
                         <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                            Des passionnés qui travaillent chaque jour pour faire de Crealith
-                            la meilleure plateforme pour les créateurs et acheteurs.
+                            Un seul interlocuteur pour un produit clair et une roadmap maîtrisée.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {team.map((member, index) => (
-                            <div key={index} className="text-center group animate-in-up" style={{ animationDelay: `${index * 100}ms` }}>
-                                <div className="relative mb-6">
-                                    <img
-                                        src={member.image}
-                                        alt={member.name}
-                                        className="w-32 h-32 rounded-full mx-auto object-cover shadow-premium group-hover:shadow-large transition-all duration-300"
-                                    />
-                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center">
-                                        <CheckCircle className="w-5 h-5 text-white" />
-                                    </div>
-                                </div>
-                                <h3 className="text-xl font-bold text-gray-100 mb-2">{member.name}</h3>
-                                <p className="text-primary-400 font-semibold mb-3">{member.role}</p>
-                                <p className="text-gray-400 text-sm leading-relaxed">{member.description}</p>
+                        <div className="text-center group animate-in-up">
+                            <div className="relative mb-6">
+                                <div className="w-32 h-32 rounded-full mx-auto bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center shadow-premium" />
                             </div>
-                        ))}
+                            <h3 className="text-xl font-bold text-gray-100 mb-2">Dan Bethel IRYIVUZE</h3>
+                            <p className="text-primary-400 font-semibold mb-3">Fondateur & Développeur</p>
+                            <p className="text-gray-400 text-sm leading-relaxed">Toulouse, France</p>
+                            <div className="mt-3 space-x-4">
+                                <a className="text-primary-400" href="mailto:danbetheliryivuze@gmail.com">Email</a>
+                                <a className="text-primary-400" href="tel:+33609409359">Téléphone</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>

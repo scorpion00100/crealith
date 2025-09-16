@@ -5,7 +5,7 @@ import { Product } from '@/types';
 import { useAppSelector, useAppDispatch } from '@/store';
 import { addToCartAsync } from '@/store/slices/cartSlice';
 import { addNotification } from '@/store/slices/uiSlice';
-import { toggleFavorite } from '@/store/slices/favoritesSlice';
+import { addFavoriteAsync } from '@/store/slices/favoritesSlice';
 import { useAuth } from '@/hooks/useAuth';
 import '../styles/pages/home.css';
 import {
@@ -132,16 +132,16 @@ export const HomePage: React.FC = () => {
     }
 
     try {
-      await dispatch(toggleFavorite(productId)).unwrap();
+      await dispatch(addFavoriteAsync(productId)).unwrap();
       dispatch(addNotification({
         type: 'success',
-        message: 'Favoris mis à jour !',
+        message: 'Ajouté aux favoris !',
         duration: 3000
       }));
     } catch (error) {
       dispatch(addNotification({
         type: 'error',
-        message: 'Erreur lors de la gestion des favoris',
+        message: 'Erreur lors de l\'ajout aux favoris',
         duration: 4000
       }));
     }

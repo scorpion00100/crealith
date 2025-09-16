@@ -40,7 +40,7 @@ export const ContactPage: React.FC = () => {
     try {
       // Simuler l'envoi du formulaire
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       dispatch(addNotification({
         type: 'success',
         message: 'Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.',
@@ -70,20 +70,20 @@ export const ContactPage: React.FC = () => {
     {
       icon: Mail,
       title: 'Email',
-      value: 'contact@crealith.com',
+      value: 'danbetheliryivuze@gmail.com',
       description: 'Réponse sous 24h'
     },
     {
       icon: Phone,
       title: 'Téléphone',
-      value: '+33 1 23 45 67 89',
+      value: '+33 6 09 40 93 59',
       description: 'Lun-Ven 9h-18h'
     },
     {
       icon: MapPin,
-      title: 'Adresse',
-      value: '123 Rue de la Créativité',
-      description: '75001 Paris, France'
+      title: 'Localisation',
+      value: 'Toulouse, France',
+      description: 'Projet indépendant'
     },
     {
       icon: Clock,
@@ -116,7 +116,7 @@ export const ContactPage: React.FC = () => {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary-500/10 via-secondary-500/10 to-accent-500/10"></div>
-        
+
         <div className="relative container-custom section-padding">
           <div className="text-center max-w-4xl mx-auto">
             <div className="flex items-center justify-center mb-8">
@@ -124,13 +124,13 @@ export const ContactPage: React.FC = () => {
                 <MessageCircle className="w-10 h-10 text-white" />
               </div>
             </div>
-            
+
             <h1 className="responsive-text font-black mb-6 text-gradient-primary">
               Contactez-nous
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-gray-300 mb-8 leading-relaxed">
-              Nous sommes là pour vous aider ! Que vous ayez une question, 
+              Nous sommes là pour vous aider ! Que vous ayez une question,
               un problème ou simplement envie de nous dire bonjour.
             </p>
           </div>
@@ -320,7 +320,7 @@ export const ContactPage: React.FC = () => {
                       Comment devenir vendeur sur Crealith ?
                     </h4>
                     <p className="text-gray-400 text-sm">
-                      Cliquez sur "Devenir vendeur" dans le menu, remplissez le formulaire 
+                      Cliquez sur "Devenir vendeur" dans le menu, remplissez le formulaire
                       et notre équipe validera votre compte sous 24h.
                     </p>
                   </div>
@@ -337,7 +337,7 @@ export const ContactPage: React.FC = () => {
                       Comment fonctionne le système de paiement ?
                     </h4>
                     <p className="text-gray-400 text-sm">
-                      Nous utilisons Stripe pour des paiements sécurisés. Les vendeurs 
+                      Nous utilisons Stripe pour des paiements sécurisés. Les vendeurs
                       reçoivent leurs paiements sous 2-3 jours ouvrés.
                     </p>
                   </div>
@@ -364,16 +364,16 @@ export const ContactPage: React.FC = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <a
-              href="mailto:contact@crealith.com"
+              href="mailto:danbetheliryivuze@gmail.com"
               className="bg-white text-primary-600 px-8 py-4 rounded-3xl text-lg font-bold hover:bg-gray-100 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:scale-105"
             >
-              contact@crealith.com
+              danbetheliryivuze@gmail.com
             </a>
             <a
-              href="tel:+33123456789"
+              href="tel:+33609409359"
               className="border-2 border-white text-white px-8 py-4 rounded-3xl text-lg font-bold hover:bg-white hover:text-primary-600 transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:scale-105"
             >
-              +33 1 23 45 67 89
+              +33 6 09 40 93 59
             </a>
           </div>
         </div>

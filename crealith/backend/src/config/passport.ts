@@ -15,40 +15,42 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !GOOGLE_CALLBACK_URL) {
 	}
 }
 
-// Configure Google OAuth2 strategy
-passport.use(
-	new GoogleStrategy(
-		{
-			clientID: GOOGLE_CLIENT_ID || '',
-			clientSecret: GOOGLE_CLIENT_SECRET || '',
-			callbackURL: GOOGLE_CALLBACK_URL || '/api/auth/google/callback',
-			passReqToCallback: true
-		},
-		async (
-			req: Request,
-			accessToken: string,
-			refreshToken: string,
-			profile: Profile,
-			done: (err: any, user?: any, info?: any) => void
-		) => {
-			try {
-				// We only pass through the raw Google data; user creation/linking happens in route via service
-				return done(null, {
-					provider: 'google',
-					profile,
-					tokens: {
-						accessToken,
-						refreshToken
-					},
-					// Forward state/redirect if present
-					state: (req.query && (req.query.state as string)) || undefined
-				});
-			} catch (error) {
-				return done(error as Error);
+// Configure Google OAuth2 strategy only when env vars are present
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
+	passport.use(
+		new GoogleStrategy(
+			{
+				clientID: GOOGLE_CLIENT_ID,
+				clientSecret: GOOGLE_CLIENT_SECRET,
+				callbackURL: GOOGLE_CALLBACK_URL,
+				passReqToCallback: true
+			},
+			async (
+				req: Request,
+				accessToken: string,
+				refreshToken: string,
+				profile: Profile,
+				done: (err: any, user?: any, info?: any) => void
+			) => {
+				try {
+					// We only pass through the raw Google data; user creation/linking happens in route via service
+					return done(null, {
+						provider: 'google',
+						profile,
+						tokens: {
+							accessToken,
+							refreshToken
+						},
+						// Forward state/redirect if present
+						state: (req.query && (req.query.state as string)) || undefined
+					});
+				} catch (error) {
+					return done(error as Error);
+				}
 			}
-		}
-	)
-);
+		)
+	);
+}
 
 // No sessions used; JWT only. Serialize/deserialize are no-ops for completeness.
 passport.serializeUser((user: any, done: (err: any, id?: any) => void) => done(null, user as any));

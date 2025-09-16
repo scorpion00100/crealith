@@ -39,6 +39,8 @@ export const ProfilePage: React.FC = () => {
         website: '',
         avatar: ''
     });
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -60,8 +62,10 @@ export const ProfilePage: React.FC = () => {
                 bio: user.bio || '',
                 location: '',
                 website: '',
-                avatar: user.avatar || ''
+                avatar: ''
             });
+            setAvatarFile(null);
+            setAvatarPreview(null);
         }
     }, [isAuthenticated, user, navigate, dispatch]);
 
@@ -78,6 +82,8 @@ export const ProfilePage: React.FC = () => {
         try {
             // Simuler la sauvegarde
             await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // TODO(API): uploader avatarFile vers le backend et mettre à jour l'URL d'avatar utilisateur
 
             dispatch(addNotification({
                 type: 'success',
@@ -107,8 +113,10 @@ export const ProfilePage: React.FC = () => {
                 bio: user.bio || '',
                 location: '',
                 website: '',
-                avatar: user.avatar || ''
+                avatar: ''
             });
+            setAvatarFile(null);
+            setAvatarPreview(null);
         }
         setIsEditing(false);
     };
@@ -156,21 +164,39 @@ export const ProfilePage: React.FC = () => {
                 <div className="relative container-custom section-padding">
                     <div className="text-center max-w-4xl mx-auto">
                         <div className="relative inline-block mb-8">
-                            <div className="w-32 h-32 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center shadow-premium mx-auto">
-                                {user.avatar ? (
-                                    <img
-                                        src={user.avatar}
-                                        alt={`${user.firstName} ${user.lastName}`}
-                                        className="w-full h-full rounded-full object-cover"
-                                    />
+                            <div className="w-32 h-32 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-full flex items-center justify-center shadow-premium mx-auto overflow-hidden">
+                                {avatarPreview ? (
+                                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                                 ) : (
                                     <span className="text-4xl font-black text-white">{getUserInitials()}</span>
                                 )}
                             </div>
                             {isEditing && (
-                                <button className="absolute bottom-0 right-0 w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-600 transition-colors duration-300">
-                                    <Camera className="w-5 h-5 text-white" />
-                                </button>
+                                <>
+                                    <input
+                                        id="avatar-input"
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            const file = e.target.files && e.target.files[0];
+                                            if (!file) return;
+                                            setAvatarFile(file);
+                                            const reader = new FileReader();
+                                            reader.onload = () => {
+                                                setAvatarPreview(reader.result as string);
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => document.getElementById('avatar-input')?.click()}
+                                        className="absolute bottom-0 right-0 w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center shadow-lg hover:bg-primary-600 transition-colors duration-300"
+                                    >
+                                        <Camera className="w-5 h-5 text-white" />
+                                    </button>
+                                </>
                             )}
                         </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { addNotification } from '@/store/slices/uiSlice';
+import { apiService } from '@/services/api';
 import { useAppDispatch } from '@/store';
 import '../../styles/auth/reset-password.css';
 
@@ -74,20 +75,13 @@ export const ResetPasswordPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await fetch('http://localhost:5000/api/auth/reset-password', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    token,
-                    newPassword: formData.password,
-                }),
-            });
+            const data = await apiService.post<{ success: boolean; message: string }>(
+                '/auth/reset-password',
+                { token, newPassword: formData.password },
+                false
+            );
 
-            const data = await response.json();
-
-            if (data.success) {
+            if ((data as any).success) {
                 dispatch(addNotification({
                     type: 'success',
                     message: 'Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.',
@@ -100,7 +94,7 @@ export const ResetPasswordPage: React.FC = () => {
                     replace: true
                 });
             } else {
-                throw new Error(data.message || 'Erreur lors de la réinitialisation');
+                throw new Error((data as any).message || 'Erreur lors de la réinitialisation');
             }
         } catch (error: any) {
             dispatch(addNotification({

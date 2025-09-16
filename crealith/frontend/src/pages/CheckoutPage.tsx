@@ -37,13 +37,15 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
         setIsProcessing(true);
 
         try {
-            // Créer la commande
-            const orderResult = await dispatch(createOrder({ paymentMethod: 'card' })).unwrap();
-            setOrderId(orderResult.order.id);
+            // Créer la commande (retourne { order, clientSecret })
+            const creation = await dispatch(createOrder({ paymentMethod: 'card' })).unwrap();
+            const createdOrder = creation?.order || creation?.data?.order || creation?.data?.order;
+            const clientSecret = creation?.clientSecret || creation?.data?.clientSecret;
+            setOrderId(createdOrder.id);
 
             // Confirmer le paiement avec Stripe
             const { error, paymentIntent } = await stripe.confirmCardPayment(
-                orderResult.clientSecret,
+                clientSecret,
                 {
                     payment_method: {
                         card: elements.getElement(CardElement)!,
@@ -60,7 +62,8 @@ const CheckoutForm: React.FC<CheckoutFormProps> = ({ onSuccess, onError }) => {
             if (paymentIntent.status === 'succeeded') {
                 // Confirmer la commande côté serveur
                 await dispatch(createOrder({
-                    orderId: orderResult.order.id,
+                    paymentMethod: 'card',
+                    orderId: createdOrder.id,
                     paymentIntentId: paymentIntent.id
                 })).unwrap();
 
@@ -160,6 +163,8 @@ export const CheckoutPage: React.FC = () => {
             message: 'Paiement réussi ! Votre commande a été confirmée.',
             duration: 5000
         }));
+        // Redirection douce vers les commandes
+        setTimeout(() => navigate('/orders'), 1500);
     };
 
     const handleError = (message: string) => {
@@ -168,6 +173,7 @@ export const CheckoutPage: React.FC = () => {
             message: message,
             duration: 5000
         }));
+        // Option: rester sur place, ou guider vers /cart en cas d'échec de paiement
     };
 
     const handleContinueShopping = () => {

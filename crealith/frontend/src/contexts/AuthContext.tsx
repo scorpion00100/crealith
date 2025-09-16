@@ -62,11 +62,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
     };
 
-    // Rediriger après connexion réussie
+    // Rediriger après connexion réussie (choix par rôle si pas d'URL prévue)
     const redirectAfterLogin = (defaultPath: string = '/dashboard') => {
         const savedUrl = sessionStorage.getItem('intendedUrl');
         const stateUrl = location.state?.from;
-        const redirectUrl = savedUrl || stateUrl || defaultPath;
+        // Déterminer une route par défaut basée sur le rôle si rien n'est demandé
+        const roleDefault = user?.role === 'SELLER' ? '/seller-dashboard' : user?.role === 'BUYER' ? '/buyer-dashboard' : defaultPath;
+        const redirectUrl = savedUrl || stateUrl || roleDefault;
 
         // Nettoyer l'URL sauvegardée
         sessionStorage.removeItem('intendedUrl');
@@ -174,6 +176,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     const logoutUser = (): void => {
+        // Révoquer côté backend (best-effort) si refresh présent
+        try {
+            const refresh = localStorage.getItem('crealith_refresh');
+            if (refresh) {
+                fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken: refresh })
+                }).catch(() => { });
+            }
+        } catch { }
+
+        // Nettoyer les données locales
+        localStorage.removeItem('crealith_user');
+        localStorage.removeItem('crealith_token');
+        localStorage.removeItem('crealith_refresh');
+        sessionStorage.clear();
+        setIntendedUrl(null);
+
+        // Nettoyer l'état Redux
         dispatch(logout());
         dispatch(addNotification({
             type: 'info',
@@ -181,11 +203,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             duration: 3000,
         }));
 
-        // Nettoyer les données de session
-        sessionStorage.clear();
-        setIntendedUrl(null);
-
-        // Rediriger vers la page d'accueil
+        // Rediriger vers l'accueil
         navigate('/', { replace: true });
     };
 
@@ -203,9 +221,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         dispatch(clearError());
     };
 
-    // Vérifier l'authentification au chargement
+    // Vérifier/rafraîchir le profil au chargement et quand le token change
     useEffect(() => {
-        if (isAuthenticated && !user) {
+        const token = localStorage.getItem('crealith_token');
+        if (token && (!isAuthenticated || !user)) {
             refreshProfile();
         }
     }, [isAuthenticated, user]);

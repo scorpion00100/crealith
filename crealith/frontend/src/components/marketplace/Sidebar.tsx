@@ -44,30 +44,22 @@ const buyerNavItems: NavItem[] = [
         path: '/buyer-dashboard',
     },
     {
-        id: 'purchases',
-        label: 'Mes achats',
+        id: 'catalog',
+        label: 'Catalogue',
+        icon: Package,
+        path: '/catalog',
+    },
+    {
+        id: 'orders',
+        label: 'Mes commandes',
         icon: ShoppingBag,
-        path: '/purchases',
-        badge: 0,
+        path: '/orders',
     },
     {
         id: 'favorites',
         label: 'Favoris',
         icon: Heart,
         path: '/favorites',
-        badge: 0,
-    },
-    {
-        id: 'downloads',
-        label: 'Téléchargements',
-        icon: Download,
-        path: '/downloads',
-    },
-    {
-        id: 'reviews',
-        label: 'Mes avis',
-        icon: Star,
-        path: '/reviews',
     },
     {
         id: 'profile',
@@ -80,7 +72,7 @@ const buyerNavItems: NavItem[] = [
         label: 'Paramètres',
         icon: Settings,
         path: '/settings',
-    },
+    }
 ];
 
 const sellerNavItems: NavItem[] = [
@@ -94,72 +86,20 @@ const sellerNavItems: NavItem[] = [
         id: 'products',
         label: 'Mes produits',
         icon: Package,
-        path: '/seller-dashboard',
-        children: [
-            {
-                id: 'all-products',
-                label: 'Tous les produits',
-                icon: Package,
-                path: '/seller-dashboard',
-            },
-            {
-                id: 'add-product',
-                label: 'Ajouter un produit',
-                icon: Plus,
-                path: '/seller-dashboard',
-            },
-            {
-                id: 'drafts',
-                label: 'Brouillons',
-                icon: FileText,
-                path: '/seller-dashboard',
-            },
-        ],
-    },
-    {
-        id: 'orders',
-        label: 'Commandes',
-        icon: ShoppingBag,
-        path: '/seller-dashboard',
-        badge: 0,
-    },
-    {
-        id: 'analytics',
-        label: 'Analytics',
-        icon: BarChart3,
-        path: '/seller-dashboard',
-    },
-    {
-        id: 'revenue',
-        label: 'Revenus',
-        icon: DollarSign,
-        path: '/seller-dashboard',
-    },
-    {
-        id: 'messages',
-        label: 'Messages',
-        icon: MessageSquare,
-        path: '/seller-dashboard',
-        badge: 0,
-    },
-    {
-        id: 'reviews',
-        label: 'Avis clients',
-        icon: Star,
-        path: '/seller-dashboard',
+        path: '/seller-dashboard#products',
     },
     {
         id: 'profile',
-        label: 'Profil vendeur',
+        label: 'Profil',
         icon: User,
-        path: '/seller-dashboard',
+        path: '/profile',
     },
     {
         id: 'settings',
         label: 'Paramètres',
         icon: Settings,
-        path: '/seller-dashboard',
-    },
+        path: '/settings',
+    }
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -244,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div id="buyer-sidebar" className={cn(
                 'fixed top-0 left-0 h-full w-80 bg-background-900 border-r border-background-700 z-50 transform transition-transform duration-300 ease-in-out',
                 isOpen ? 'translate-x-0' : '-translate-x-full',
-                'lg:translate-x-0 lg:static lg:z-auto'
+                'lg:translate-x-0 lg:fixed lg:z-40'
             )}>
                 <div className="flex flex-col h-full">
                     {/* Header */}

@@ -10,6 +10,7 @@ import searchRoutes from './search.routes';
 import downloadRoutes from './download.routes';
 import webhookRoutes from './webhook.routes';
 import imagekitRoutes from './imagekit.routes';
+import uploadsRoutes from './uploads.routes';
 import healthRoutes from './health.routes';
 
 const router = Router();
@@ -30,6 +31,7 @@ router.get('/', (req, res) => {
           downloads: '/api/downloads',
           webhooks: '/api/webhook',
           imagekit: '/api/imagekit',
+          uploads: '/api/uploads',
           health: '/health'
         }
   });
@@ -46,6 +48,7 @@ router.use('/search', searchRoutes);
 router.use('/downloads', downloadRoutes);
 router.use('/webhook', webhookRoutes);
 router.use('/imagekit', imagekitRoutes);
+router.use('/uploads', uploadsRoutes);
 router.use('/health', healthRoutes);
 
 export default router;

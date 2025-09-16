@@ -3,6 +3,9 @@ import { ProductGrid } from '@/components/ui/ProductGrid';
 import { SearchBar } from '@/components/ui/SearchBar.simple';
 import { fetchProducts } from '@/store/slices/productSlice';
 import { useAppDispatch, useAppSelector } from '@/store';
+import { addToCartAsync } from '@/store/slices/cartSlice';
+import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
+import { addNotification } from '@/store/slices/uiSlice';
 import {
     Grid3X3,
     List,
@@ -22,17 +25,19 @@ export const CatalogPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const { items: products, isLoading } = useAppSelector(state => state.products);
+    const favorites = useAppSelector(s => s.favorites.items);
 
     // Charger les produits
     useEffect(() => {
         dispatch(fetchProducts({}));
     }, [dispatch]);
 
-    // Filtrer les produits
+    // Filtrer les produits (utilise le slug de catégorie)
     const filteredProducts = products.filter(product => {
         const matchesSearch = product.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             product.description?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory === 'all' || product.category?.name === selectedCategory;
+        const productSlug = product.category?.slug || product.categoryId || '';
+        const matchesCategory = selectedCategory === 'all' || productSlug === selectedCategory;
         return matchesSearch && matchesCategory;
     });
 
@@ -45,18 +50,31 @@ export const CatalogPage: React.FC = () => {
     ];
 
     const handleViewProduct = (productId: string) => {
-        console.log('View product:', productId);
-        // Navigation vers la page de détail du produit
+        window.location.href = `/product/${productId}`;
     };
 
-    const handleAddToCart = (productId: string) => {
-        console.log('Add to cart:', productId);
-        // Logique d'ajout au panier
+    const handleAddToCart = async (productId: string) => {
+        try {
+            await dispatch(addToCartAsync({ productId, quantity: 1 })).unwrap();
+            dispatch(addNotification({ type: 'success', message: 'Ajouté au panier', duration: 2000 }));
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur ajout au panier', duration: 3000 }));
+        }
     };
 
-    const handleToggleFavorite = (productId: string) => {
-        console.log('Toggle favorite:', productId);
-        // Logique de gestion des favoris
+    const handleToggleFavorite = async (productId: string) => {
+        try {
+            const isFav = favorites.some(p => p.id === productId);
+            if (isFav) {
+                await dispatch(removeFavoriteAsync(productId)).unwrap();
+                dispatch(addNotification({ type: 'info', message: 'Retiré des favoris', duration: 2000 }));
+            } else {
+                await dispatch(addFavoriteAsync(productId)).unwrap();
+                dispatch(addNotification({ type: 'success', message: 'Ajouté aux favoris', duration: 2000 }));
+            }
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur favoris', duration: 3000 }));
+        }
     };
 
     const handlePreview = (product: any) => {

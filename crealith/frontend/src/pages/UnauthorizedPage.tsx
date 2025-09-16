@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import '../../styles/pages/unauthorized.css';
+import '../styles/pages/unauthorized.css';
 
 export const UnauthorizedPage: React.FC = () => {
     const { user, logout } = useAuth();

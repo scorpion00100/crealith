@@ -4,19 +4,19 @@ import { createError } from '../utils/errors';
 
 // Rate limiting pour l'authentification
 export const authRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 tentatives par IP
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 tentatives par minute
   message: {
     success: false,
-    message: 'Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes.'
+    message: 'Trop de tentatives de connexion. Veuillez réessayer plus tard.'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Ne pas compter les requêtes réussies
+  skipSuccessfulRequests: true,
 });
 
 // Rate limiting pour l'inscription
-export const registerRateLimit = rateLimit({
+export const registerRateLimit = process.env.NODE_ENV === 'test' ? ((req: Request, res: Response, next: NextFunction) => next()) as any : rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 3, // 3 inscriptions par IP par heure
   message: {

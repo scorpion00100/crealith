@@ -30,8 +30,16 @@ export class OrderServiceClass {
     await apiService.delete('/cart');
   }
 
-  async createOrder(orderData: any): Promise<Order> {
-    const response = await apiService.post<{ success: boolean; data: Order }>('/orders', orderData);
+  async createOrder(orderData: any): Promise<any> {
+    // Deux usages: création (paymentMethod) et confirmation (orderId + paymentIntentId)
+    if (orderData && orderData.orderId && orderData.paymentIntentId) {
+      const response = await apiService.post<{ success: boolean; data: Order }>(`/orders/confirm`, orderData);
+      return response.data;
+    }
+    const response = await apiService.post<{ success: boolean; data: { order: Order; clientSecret: string } }>(
+      '/orders',
+      orderData
+    );
     return response.data;
   }
 

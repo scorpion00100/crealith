@@ -15,17 +15,20 @@ import { Sidebar } from '@/components/marketplace/Sidebar';
 import { SearchBar } from '@/components/marketplace/SearchBar';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAppDispatch } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
+import { fetchCart, addToCartAsync, updateCartItemAsync, removeFromCartAsync } from '@/store/slices/cartSlice';
+import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 
-// Mock data for demonstration
+// Stats basiques pour MVP
 const mockStats = {
-    totalPurchases: 24,
-    totalSpent: 189.50,
-    favoritesCount: 12,
-    downloadsCount: 18,
-    recentActivity: 5
+    totalPurchases: 0,
+    totalSpent: 0,
+    favoritesCount: 0,
+    downloadsCount: 0,
+    recentActivity: 0
 };
 
 const mockRecentPurchases = [
@@ -37,24 +40,6 @@ const mockRecentPurchases = [
         purchaseDate: '2025-01-08',
         downloads: 2,
         rating: 4.8
-    },
-    {
-        id: '2',
-        title: 'Pack d\'icônes vectorielles',
-        price: 8.50,
-        image: '/placeholder-product.jpg',
-        purchaseDate: '2025-01-05',
-        downloads: 1,
-        rating: 4.9
-    },
-    {
-        id: '3',
-        title: 'Mockup iPhone 15 Pro',
-        price: 12.00,
-        image: '/placeholder-product.jpg',
-        purchaseDate: '2025-01-03',
-        downloads: 3,
-        rating: 4.7
     }
 ];
 
@@ -73,75 +58,92 @@ const mockRecommendedProducts = [
         category: { name: 'Templates' },
         seller: { firstName: 'Alex', lastName: 'Designer' },
         createdAt: '2025-01-10'
-    },
-    {
-        id: '5',
-        title: 'Pack de polices premium',
-        price: 19.99,
-        image: '/placeholder-product.jpg',
-        rating: 4.8,
-        reviewCount: 89,
-        downloads: 890,
-        category: { name: 'Polices' },
-        seller: { firstName: 'Sarah', lastName: 'Typography' },
-        createdAt: '2025-01-09'
-    },
-    {
-        id: '6',
-        title: 'Photoshop Actions Pro',
-        price: 14.99,
-        image: '/placeholder-product.jpg',
-        rating: 4.7,
-        reviewCount: 234,
-        downloads: 2100,
-        category: { name: 'Actions' },
-        seller: { firstName: 'Mike', lastName: 'Photo' },
-        createdAt: '2025-01-08'
     }
 ];
 
 export const BuyerDashboardPage: React.FC = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'purchases' | 'favorites' | 'downloads'>('overview');
-    const { user, logout } = useAuth();
+    const [activeTab] = useState<'overview'>('overview');
+    const { user } = useAuth();
     const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [results, setResults] = useState<any[]>(mockRecommendedProducts);
 
-    // État panier simple (id + qty)
-    const [cartItems, setCartItems] = useState<{ id: string; title: string; price: number; qty: number }[]>([]);
+    // Store selectors
+    const cart = useAppSelector((s) => s.cart);
+    const favorites = useAppSelector((s) => s.favorites.items);
 
-    const isInCart = (id: string) => cartItems.some((i) => i.id === id);
+    const isInCart = (id: string) => cart.items.some((i) => i.product.id === id);
 
-    const handleAddToCart = (product: any) => {
-        setCartItems((prev) => {
-            const existing = prev.find((p) => p.id === product.id);
-            if (existing) {
-                return prev.map((p) => (p.id === product.id ? { ...p, qty: p.qty + 1 } : p));
+    // Charger le panier serveur
+    React.useEffect(() => {
+        dispatch(fetchCart());
+    }, [dispatch]);
+
+    const handleAddToCart = async (product: any) => {
+        try {
+            await dispatch(addToCartAsync({ productId: product.id, quantity: 1 })).unwrap();
+            dispatch(addNotification({ type: 'success', message: 'Ajouté au panier', duration: 2000 }));
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur ajout au panier', duration: 3000 }));
+        }
+    };
+
+    const handleDecreaseQty = async (id: string) => {
+        const item = cart.items.find((p) => p.id === id);
+        if (!item) return;
+        const nextQty = item.quantity - 1;
+        try {
+            if (nextQty <= 0) {
+                await dispatch(removeFromCartAsync(id)).unwrap();
+                dispatch(addNotification({ type: 'info', message: 'Retiré du panier', duration: 2000 }));
+            } else {
+                await dispatch(updateCartItemAsync({ id, quantity: nextQty })).unwrap();
             }
-            return [...prev, { id: product.id, title: product.title, price: product.price, qty: 1 }];
-        });
-        dispatch(addNotification({ type: 'success', message: 'Ajouté au panier', duration: 2000 }));
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur mise à jour quantité', duration: 3000 }));
+        }
     };
 
-    const handleDecreaseQty = (id: string) => {
-        setCartItems((prev) => {
-            const item = prev.find((p) => p.id === id);
-            if (!item) return prev;
-            if (item.qty <= 1) return prev.filter((p) => p.id !== id);
-            return prev.map((p) => (p.id === id ? { ...p, qty: p.qty - 1 } : p));
-        });
+    const handleIncreaseQty = async (id: string) => {
+        const item = cart.items.find((p) => p.id === id);
+        if (!item) return;
+        try {
+            await dispatch(updateCartItemAsync({ id, quantity: item.quantity + 1 })).unwrap();
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur mise à jour quantité', duration: 3000 }));
+        }
     };
 
-    const handleRemoveFromCart = (id: string) => {
-        setCartItems((prev) => prev.filter((p) => p.id !== id));
-        dispatch(addNotification({ type: 'info', message: 'Retiré du panier', duration: 2000 }));
+    const handleRemoveFromCart = async (id: string) => {
+        try {
+            await dispatch(removeFromCartAsync(id)).unwrap();
+            dispatch(addNotification({ type: 'info', message: 'Retiré du panier', duration: 2000 }));
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur suppression', duration: 3000 }));
+        }
     };
 
-    const cartTotal = cartItems.reduce((sum, i) => sum + i.price * i.qty, 0);
+    const cartTotal = cart.items.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
 
-    const handleSearch = (query: string, filters?: any) => {
+    const isFavorite = (id: string) => favorites.some((p) => p.id === id);
+    const handleToggleFavorite = async (product: any) => {
+        try {
+            if (isFavorite(product.id)) {
+                await dispatch(removeFavoriteAsync(product.id)).unwrap();
+                dispatch(addNotification({ type: 'info', message: 'Retiré des favoris', duration: 2000 }));
+            } else {
+                await dispatch(addFavoriteAsync(product.id)).unwrap();
+                dispatch(addNotification({ type: 'success', message: 'Ajouté aux favoris', duration: 2000 }));
+            }
+        } catch {
+            dispatch(addNotification({ type: 'error', message: 'Erreur favoris', duration: 3000 }));
+        }
+    };
+
+    const handleSearch = (query: string) => {
         setIsSearching(true);
         setSearchQuery(query);
         window.setTimeout(() => {
@@ -232,7 +234,7 @@ export const BuyerDashboardPage: React.FC = () => {
             />
 
             {/* Main Content */}
-            <div className="lg:ml-80">
+            <div className="lg:ml-80 lg:pl-0">
                 {/* Header */}
                 <header className="bg-background-800 border-b border-background-700 px-6 py-4">
                     <div className="flex items-center justify-between">
@@ -258,7 +260,19 @@ export const BuyerDashboardPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => navigate('/favorites')}
+                                className="px-3 py-2 rounded-lg bg-background-700 text-text-200 hover:bg-background-600"
+                            >
+                                Favoris
+                            </button>
+                            <button
+                                onClick={() => navigate('/cart')}
+                                className="px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600"
+                            >
+                                Panier
+                            </button>
                             <SearchBar className="hidden md:block" onSearch={handleSearch} />
                         </div>
                     </div>
@@ -268,26 +282,15 @@ export const BuyerDashboardPage: React.FC = () => {
                 <main className="p-6">
                     {/* Tabs */}
                     <div className="flex gap-1 mb-8 bg-background-800 p-1 rounded-2xl w-fit">
-                        {[
-                            { id: 'overview', label: 'Vue d\'ensemble', icon: TrendingUp },
-                            { id: 'purchases', label: 'Mes achats', icon: ShoppingBag },
-                            { id: 'favorites', label: 'Favoris', icon: Heart },
-                            { id: 'downloads', label: 'Téléchargements', icon: Download }
-                        ].map((tab) => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id as any)}
-                                className={cn(
-                                    'flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200',
-                                    activeTab === tab.id
-                                        ? 'bg-primary-500 text-white'
-                                        : 'text-text-400 hover:text-text-200 hover:bg-background-700'
-                                )}
-                            >
-                                <tab.icon className="w-4 h-4" />
-                                {tab.label}
-                            </button>
-                        ))}
+                        <button
+                            className={cn(
+                                'flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200',
+                                'bg-primary-500 text-white'
+                            )}
+                        >
+                            <TrendingUp className="w-4 h-4" />
+                            Vue d'ensemble
+                        </button>
                     </div>
 
                     {/* Overview Tab */}
@@ -299,29 +302,29 @@ export const BuyerDashboardPage: React.FC = () => {
                                     title="Total des achats"
                                     value={mockStats.totalPurchases}
                                     icon={ShoppingBag}
-                                    change="+3 ce mois"
-                                    trend="up"
+                                    change=""
+                                    trend="neutral"
                                 />
                                 <StatCard
                                     title="Montant dépensé"
                                     value={formatPrice(mockStats.totalSpent)}
                                     icon={DollarSign}
-                                    change="+12%"
-                                    trend="up"
+                                    change=""
+                                    trend="neutral"
                                 />
                                 <StatCard
                                     title="Produits favoris"
                                     value={mockStats.favoritesCount}
                                     icon={Heart}
-                                    change="+2 cette semaine"
-                                    trend="up"
+                                    change=""
+                                    trend="neutral"
                                 />
                                 <StatCard
                                     title="Téléchargements"
                                     value={mockStats.downloadsCount}
                                     icon={Download}
-                                    change="+5 récents"
-                                    trend="up"
+                                    change=""
+                                    trend="neutral"
                                 />
                             </div>
 
@@ -330,8 +333,8 @@ export const BuyerDashboardPage: React.FC = () => {
                                 <div>
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-xl font-bold text-text-100">Achats récents</h2>
-                                        <button className="text-primary-400 hover:text-primary-300 font-medium">
-                                            Voir tout
+                                        <button onClick={() => navigate('/orders')} className="text-primary-400 hover:text-primary-300 font-medium">
+                                            Voir mes commandes
                                         </button>
                                     </div>
                                     <div className="space-y-4">
@@ -345,38 +348,26 @@ export const BuyerDashboardPage: React.FC = () => {
                                 <div>
                                     <h2 className="text-xl font-bold text-text-100 mb-6">Actions rapides</h2>
                                     <div className="space-y-4">
-                                        <button className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
+                                        <button onClick={() => navigate('/favorites')} className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-primary-500/20 rounded-lg group-hover:bg-primary-500/30 transition-colors">
                                                     <Heart className="w-5 h-5 text-primary-400" />
                                                 </div>
                                                 <div>
                                                     <p className="font-medium text-text-100">Voir mes favoris</p>
-                                                    <p className="text-sm text-text-400">12 produits sauvegardés</p>
+                                                    <p className="text-sm text-text-400">Produits sauvegardés</p>
                                                 </div>
                                             </div>
                                         </button>
 
-                                        <button className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
+                                        <button onClick={() => navigate('/orders')} className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-secondary-500/20 rounded-lg group-hover:bg-secondary-500/30 transition-colors">
                                                     <Download className="w-5 h-5 text-secondary-400" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium text-text-100">Téléchargements</p>
-                                                    <p className="text-sm text-text-400">18 fichiers disponibles</p>
-                                                </div>
-                                            </div>
-                                        </button>
-
-                                        <button className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-success-500/20 rounded-lg group-hover:bg-success-500/30 transition-colors">
-                                                    <Star className="w-5 h-5 text-success-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-text-100">Mes avis</p>
-                                                    <p className="text-sm text-text-400">Laisser un avis</p>
+                                                    <p className="font-medium text-text-100">Mes commandes</p>
+                                                    <p className="text-sm text-text-400">Téléchargements après paiement</p>
                                                 </div>
                                             </div>
                                         </button>
@@ -388,21 +379,21 @@ export const BuyerDashboardPage: React.FC = () => {
                             <div className="bg-background-800 border border-background-700 rounded-2xl p-4 mb-8">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-lg font-bold text-text-100">Panier</h3>
-                                    <span className="text-sm text-text-400">{cartItems.length} article{cartItems.length > 1 ? 's' : ''}</span>
+                                    <span className="text-sm text-text-400">{cart.items.length} article{cart.items.length > 1 ? 's' : ''}</span>
                                 </div>
-                                {cartItems.length === 0 ? (
+                                {cart.items.length === 0 ? (
                                     <p className="text-text-400">Votre panier est vide</p>
                                 ) : (
                                     <div className="space-y-3">
-                                        {cartItems.map((item) => (
+                                        {cart.items.map((item) => (
                                             <div key={item.id} className="flex items-center justify-between">
                                                 <div className="min-w-0">
-                                                    <p className="text-text-100 truncate">{item.title}</p>
-                                                    <p className="text-text-400 text-sm">{item.qty} × {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(item.price)}</p>
+                                                    <p className="text-text-100 truncate">{item.product.title}</p>
+                                                    <p className="text-text-400 text-sm">{item.quantity} × {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(item.product.price))}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleDecreaseQty(item.id)}>-</button>
-                                                    <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleAddToCart(item)}>+</button>
+                                                    <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleIncreaseQty(item.id)}>+</button>
                                                     <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleRemoveFromCart(item.id)}>Retirer</button>
                                                 </div>
                                             </div>
@@ -411,7 +402,7 @@ export const BuyerDashboardPage: React.FC = () => {
                                             <span className="text-text-400">Total</span>
                                             <span className="text-text-100 font-bold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cartTotal)}</span>
                                         </div>
-                                        <button className="w-full mt-3 px-4 py-2 rounded-xl bg-primary-500 text-white disabled:opacity-50" disabled={cartItems.length === 0}>
+                                        <button className="w-full mt-3 px-4 py-2 rounded-xl bg-primary-500 text-white disabled:opacity-50" disabled={cart.items.length === 0} onClick={() => navigate('/checkout')}>
                                             Passer au paiement
                                         </button>
                                     </div>
@@ -422,7 +413,7 @@ export const BuyerDashboardPage: React.FC = () => {
                             <div>
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-xl font-bold text-text-100">Recommandés pour vous</h2>
-                                    <button className="text-primary-400 hover:text-primary-300 font-medium">
+                                    <button onClick={() => navigate('/catalog')} className="text-primary-400 hover:text-primary-300 font-medium">
                                         Voir plus
                                     </button>
                                 </div>
@@ -460,8 +451,9 @@ export const BuyerDashboardPage: React.FC = () => {
                                                 showSeller={true}
                                                 onAddToCart={() => handleAddToCart(product)}
                                                 isInCart={isInCart(product.id)}
-                                                onAddToFavorites={(id) => console.log('Add to favorites:', id)}
-                                                onQuickView={(id) => console.log('Quick view:', id)}
+                                                onAddToFavorites={() => handleToggleFavorite(product)}
+                                                isFavorite={isFavorite(product.id)}
+                                                onQuickView={(id) => navigate(`/product/${id}`)}
                                             />
                                         ))}
                                     </div>
@@ -470,22 +462,7 @@ export const BuyerDashboardPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Other tabs content would go here */}
-                    {activeTab !== 'overview' && (
-                        <div className="text-center py-12">
-                            <div className="w-24 h-24 bg-background-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Package className="w-12 h-12 text-text-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-text-100 mb-2">
-                                {activeTab === 'purchases' && 'Mes achats'}
-                                {activeTab === 'favorites' && 'Mes favoris'}
-                                {activeTab === 'downloads' && 'Mes téléchargements'}
-                            </h3>
-                            <p className="text-text-400">
-                                Cette section sera bientôt disponible
-                            </p>
-                        </div>
-                    )}
+                    {/* Sections non-implémentées retirées pour MVP */}
                 </main>
             </div>
         </div>

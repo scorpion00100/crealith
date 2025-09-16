@@ -111,7 +111,9 @@ export interface RegisterForm {
 
 export interface AuthResponse {
   user: User;
-  token: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn?: number;
 }
 
 // Types pour les API

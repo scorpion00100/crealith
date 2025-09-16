@@ -31,17 +31,20 @@ const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage').
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const EmailConfirmationPage = lazy(() => import('@/pages/auth/EmailConfirmationPage').then(module => ({ default: module.EmailConfirmationPage })));
 const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage').then(module => ({ default: module.VerifyEmailPage })));
+const GoogleCallbackPage = lazy(() => import('@/pages/auth/GoogleCallbackPage').then(module => ({ default: module.default })));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage').then(module => ({ default: module.UnauthorizedPage })));
 
 // Lazy loading des pages de dashboard
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const SellerDashboardPage = lazy(() => import('@/pages/seller/SellerDashboardPage').then(module => ({ default: module.SellerDashboardPage })));
 const BuyerDashboardPage = lazy(() => import('@/pages/buyer/BuyerDashboardPage').then(module => ({ default: module.BuyerDashboardPage })));
+const OrdersPage = lazy(() => import('@/pages/OrdersPage').then(module => ({ default: module.OrdersPage })));
 
 // Lazy loading des pages statiques
 const AboutPage = lazy(() => import('@/pages/AboutPage').then(module => ({ default: module.AboutPage })));
 const ContactPage = lazy(() => import('@/pages/ContactPage').then(module => ({ default: module.ContactPage })));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(module => ({ default: module.ProfilePage })));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
 
 const App: React.FC = () => {
   return (
@@ -79,48 +82,15 @@ const App: React.FC = () => {
                     </Suspense>
                   </Layout>
                 } />
-                <Route path="/cart" element={
+
+                <Route path="/auth/google/callback" element={
                   <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement du panier..." />}>
-                      <CartPage />
+                    <Suspense fallback={<LoadingSpinner text="Finalisation de la connexion Google..." />}>
+                      <GoogleCallbackPage />
                     </Suspense>
                   </Layout>
                 } />
-                <Route path="/checkout" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement du paiement..." />}>
-                      <CheckoutPage />
-                    </Suspense>
-                  </Layout>
-                } />
-                <Route path="/favorites" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement des favoris..." />}>
-                      <FavoritesPage />
-                    </Suspense>
-                  </Layout>
-                } />
-                <Route path="/login" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de la connexion..." />}>
-                      <LoginPage />
-                    </Suspense>
-                  </Layout>
-                } />
-                <Route path="/register" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de l'inscription..." />}>
-                      <RegisterPage />
-                    </Suspense>
-                  </Layout>
-                } />
-                <Route path="/forgot-password" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de la réinitialisation..." />}>
-                      <ForgotPasswordPage />
-                    </Suspense>
-                  </Layout>
-                } />
+
                 <Route path="/about" element={
                   <Layout>
                     <Suspense fallback={<LoadingSpinner text="Chargement de la page À propos..." />}>
@@ -135,72 +105,63 @@ const App: React.FC = () => {
                     </Suspense>
                   </Layout>
                 } />
-                <Route path="/profile" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement du profil..." />}>
-                      <ProfilePage />
-                    </Suspense>
-                  </Layout>
-                } />
 
-                {/* Pages de dashboard avec DashboardLayout */}
-                <Route path="/dashboard" element={
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard..." />}>
-                    <DashboardPage />
-                  </Suspense>
-                } />
-                <Route path="/seller-dashboard" element={
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard vendeur..." />}>
-                    <SellerDashboardPage />
-                  </Suspense>
-                } />
-                <Route path="/buyer-dashboard" element={
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard acheteur..." />}>
-                    <BuyerDashboardPage />
-                  </Suspense>
-                } />
+
+                {/* Pages de dashboard (versions non protégées retirées) */}
 
                 {/* Routes d'authentification avec protection */}
                 <Route path="/login" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement de la connexion..." />}>
-                      <LoginPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de la connexion..." />}>
+                        <LoginPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
                 <Route path="/register" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement de l'inscription..." />}>
-                      <RegisterPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de l'inscription..." />}>
+                        <RegisterPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
                 <Route path="/forgot-password" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
-                      <ForgotPasswordPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                        <ForgotPasswordPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
                 <Route path="/reset-password" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
-                      <ResetPasswordPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                        <ResetPasswordPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
                 <Route path="/email-confirmation" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
-                      <EmailConfirmationPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                        <EmailConfirmationPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
                 <Route path="/verify-email" element={
                   <PublicRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
-                      <VerifyEmailPage />
-                    </Suspense>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                        <VerifyEmailPage />
+                      </Suspense>
+                    </Layout>
                   </PublicRoute>
                 } />
 
@@ -231,6 +192,25 @@ const App: React.FC = () => {
                     <Layout>
                       <Suspense fallback={<LoadingSpinner text="Chargement du profil..." />}>
                         <ProfilePage />
+                      </Suspense>
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement des paramètres..." />}>
+                        <SettingsPage />
+                      </Suspense>
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+
+                <Route path="/orders" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement des commandes..." />}>
+                        <OrdersPage />
                       </Suspense>
                     </Layout>
                   </ProtectedRoute>

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { Order } from '@/types';
+import { orderService } from '@/services/order.service';
 
 interface OrderState {
   orders: Order[];
@@ -20,8 +21,8 @@ export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
   async (_, { rejectWithValue }) => {
     try {
-      // TODO: Implémenter l'API pour récupérer les commandes
-      return [];
+      const orders = await orderService.getOrders();
+      return orders;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -30,10 +31,16 @@ export const fetchOrders = createAsyncThunk(
 
 export const createOrder = createAsyncThunk(
   'orders/createOrder',
-  async (orderData: any, { rejectWithValue }) => {
+  async (payload: { paymentMethod: string; orderId?: string; paymentIntentId?: string }, { rejectWithValue }) => {
     try {
-      // TODO: Implémenter l'API pour créer une commande
-      return orderData;
+      if (payload.orderId && payload.paymentIntentId) {
+        // Confirm
+        const response = await orderService.createOrder({ orderId: payload.orderId, paymentIntentId: payload.paymentIntentId });
+        return response as any;
+      }
+      // Create
+      const response = await orderService.createOrder({ paymentMethod: payload.paymentMethod });
+      return response as any;
     } catch (error: any) {
       return rejectWithValue(error.message);
     }

@@ -147,15 +147,15 @@ export const Footer: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-gray-400">
                 <Mail className="w-4 h-4 text-accent-400" />
-                <span>contact@crealith.com</span>
+                <span>danbetheliryivuze@gmail.com</span>
               </div>
               <div className="flex items-center gap-3 text-gray-400">
                 <Phone className="w-4 h-4 text-accent-400" />
-                <span>+33 1 23 45 67 89</span>
+                <span>+33 6 09 40 93 59</span>
               </div>
               <div className="flex items-center gap-3 text-gray-400">
                 <MapPin className="w-4 h-4 text-accent-400" />
-                <span>Paris, France</span>
+                <span>Toulouse, France</span>
               </div>
             </div>
 

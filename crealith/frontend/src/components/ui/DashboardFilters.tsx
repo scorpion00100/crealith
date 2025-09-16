@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Calendar, 
-  DollarSign, 
-  Star, 
+import {
+  Search,
+  Filter,
+  Calendar,
+  DollarSign,
+  Star,
   Download,
   X,
   ChevronDown,
@@ -68,7 +68,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
   const updateFilters = (updates: Partial<FilterOptions>) => {
     const newFilters = { ...filters, ...updates };
     onFiltersChange(newFilters);
-    
+
     // Update active filters count
     const active = [];
     if (newFilters.search) active.push('Recherche');
@@ -78,7 +78,7 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
     if (newFilters.rating) active.push('Note');
     if (newFilters.category?.length) active.push('Catégorie');
     if (newFilters.sortBy) active.push('Tri');
-    
+
     setActiveFilters(active);
   };
 
@@ -251,11 +251,10 @@ export const DashboardFilters: React.FC<DashboardFiltersProps> = ({
                 <button
                   key={rating}
                   onClick={() => updateFilters({ rating: filters.rating === rating ? undefined : rating })}
-                  className={`p-2 rounded-lg transition-colors ${
-                    filters.rating === rating
+                  className={`p-2 rounded-lg transition-colors ${filters.rating === rating
                       ? 'bg-yellow-100 text-yellow-800'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center space-x-1">
                     <Star className="w-4 h-4 fill-current" />
