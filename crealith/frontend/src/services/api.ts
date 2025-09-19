@@ -6,6 +6,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 class ApiService {
   private api: AxiosInstance;
+  private isRefreshing = false;
+  private refreshPromise: Promise<void> | null = null;
 
   constructor() {
     this.api = axios.create({
@@ -13,6 +15,7 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true,
     });
 
     // Intercepteur pour ajouter le token d'authentification
@@ -34,19 +37,35 @@ class ApiService {
     // Intercepteur pour gérer les erreurs de réponse
     this.api.interceptors.response.use(
       (response) => response,
-      (error) => {
+      async (error) => {
         const { response } = error;
         const requestUrl: string = error?.config?.url || '';
+        const originalRequest = error.config || {};
         
         if (response?.status === 401) {
           // Éviter de perturber le flux d'auth sur /auth/login et /auth/register
           const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
-          if (!isAuthRoute) {
-            // Token expiré ou invalide: nettoyage + redirection
-            authService.logout();
-            setTimeout(() => {
-              window.location.href = '/login?reason=session_expired';
-            }, 300);
+          const alreadyRetried = originalRequest.__isRetryRequest;
+          if (!isAuthRoute && !alreadyRetried) {
+            try {
+              // Marquer la requête pour éviter boucle infinie
+              originalRequest.__isRetryRequest = true;
+              // Effectuer (ou attendre) un refresh unique
+              await this.refreshAccessTokenOnce();
+              // Réinjecter le nouvel access token et rejouer la requête
+              const newToken = authService.getToken();
+              if (newToken) {
+                originalRequest.headers = originalRequest.headers || {};
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              }
+              return this.api(originalRequest);
+            } catch (refreshError) {
+              // Échec du refresh: déconnexion propre
+              authService.logout();
+              setTimeout(() => {
+                window.location.href = '/login?reason=session_expired';
+              }, 300);
+            }
           }
         } else if (response?.status === 403) {
           // Accès refusé
@@ -62,6 +81,50 @@ class ApiService {
         return Promise.reject(error);
       }
     );
+  }
+
+  private getCookie(name: string): string | null {
+    try {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()!.split(';').shift() || null;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async refreshAccessTokenOnce(): Promise<void> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = (async () => {
+      try {
+        const csrfToken = this.getCookie('csrfToken');
+        const storedRefresh = localStorage.getItem('crealith_refresh');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+
+        const resp = await axios.post(
+          `${API_BASE_URL}/auth/refresh`,
+          storedRefresh ? { refreshToken: storedRefresh } : {},
+          { headers, withCredentials: true }
+        );
+
+        const data = resp?.data || {};
+        const accessToken = data.accessToken || data.data?.accessToken;
+        const refreshToken = data.refreshToken || data.data?.refreshToken;
+        if (accessToken) localStorage.setItem('crealith_token', accessToken);
+        if (refreshToken) localStorage.setItem('crealith_refresh', refreshToken);
+      } finally {
+        this.isRefreshing = false;
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   // Méthodes génériques avec retry

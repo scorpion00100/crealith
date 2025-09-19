@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchProductById } from '@/store/slices/productSlice';
-import { addToCartAsync } from '@/store/slices/cartSlice';
+import { addToCartAsync, fetchCart } from '@/store/slices/cartSlice';
 import { addNotification } from '@/store/slices/uiSlice';
 import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { Star, Download, Heart, Share2, Eye, ShoppingCart } from 'lucide-react';
+import { reviewService, ReviewItem } from '@/services/review.service';
 
 export const ProductDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -19,12 +20,26 @@ export const ProductDetailPage: React.FC = () => {
     const [isFavorite, setIsFavorite] = useState(false);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'details'>('overview');
+    const [topReviews, setTopReviews] = useState<ReviewItem[]>([]);
 
     useEffect(() => {
         if (id) {
             dispatch(fetchProductById(id));
         }
     }, [id, dispatch]);
+
+    useEffect(() => {
+        (async () => {
+            if (!id) return;
+            try {
+                // Récupère les 5 derniers avis (trié par createdAt desc côté API)
+                const data = await reviewService.getProductReviews(id, 1, 5);
+                setTopReviews(data.reviews || []);
+            } catch (e) {
+                // Silencieux pour MVP si API non dispo
+            }
+        })();
+    }, [id]);
 
     const handleAddToCart = async () => {
         if (!isAuthenticated) {
@@ -39,15 +54,17 @@ export const ProductDetailPage: React.FC = () => {
 
         try {
             await dispatch(addToCartAsync({ productId: id!, quantity: 1 })).unwrap();
+            // Synchroniser le panier après l'ajout
+            await dispatch(fetchCart()).unwrap();
             dispatch(addNotification({
                 type: 'success',
                 message: 'Produit ajouté au panier !',
                 duration: 3000
             }));
-        } catch (error) {
+        } catch (error: any) {
             dispatch(addNotification({
                 type: 'error',
-                message: 'Erreur lors de l\'ajout au panier',
+                message: error.message || 'Erreur lors de l\'ajout au panier',
                 duration: 4000
             }));
         }
@@ -171,8 +188,8 @@ export const ProductDetailPage: React.FC = () => {
         // Ajouter plus d'images si disponibles
     ].filter(Boolean);
 
-    const averageRating = currentProduct.averageRating || 0;
-    const totalReviews = currentProduct.totalReviews || 0;
+    const averageRating = currentProduct.averageRating || currentProduct.rating || 0;
+    const totalReviews = currentProduct.totalReviews || currentProduct.reviewCount || 0;
 
     return (
         <div className="product-detail-page">
@@ -291,11 +308,17 @@ export const ProductDetailPage: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Statistiques */}
+                        {/* Signaux de confiance */}
                         <div className="product-stats">
                             <div className="stat">
                                 <span className="stat-label">Téléchargements</span>
                                 <span className="stat-value">{currentProduct.downloadsCount?.toLocaleString()}</span>
+                            </div>
+                            <div className="stat">
+                                <span className="stat-label">Mise à jour</span>
+                                <span className="stat-value">
+                                    {currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}
+                                </span>
                             </div>
                             <div className="stat">
                                 <span className="stat-label">Ventes</span>
@@ -383,10 +406,31 @@ export const ProductDetailPage: React.FC = () => {
                                     )}
                                 </div>
 
-                                {totalReviews > 0 ? (
-                                    <div className="reviews-list">
-                                        {/* Liste des avis - à implémenter */}
-                                        <p>Les avis seront affichés ici</p>
+                                {totalReviews > 0 && topReviews.length > 0 ? (
+                                    <div className="reviews-list space-y-4">
+                                        {topReviews.map((r) => (
+                                            <div key={r.id} className="p-4 bg-background-800 border border-background-700 rounded-xl">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-9 h-9 rounded-full bg-background-700 flex items-center justify-center text-sm font-semibold">
+                                                        {r.user?.firstName?.[0]}{r.user?.lastName?.[0]}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-medium">{r.user?.firstName} {r.user?.lastName}</div>
+                                                            <div className="flex items-center">
+                                                                {[1, 2, 3, 4, 5].map(s => (
+                                                                    <Star key={s} size={14} className={s <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-600'} />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        {r.comment && (
+                                                            <div className="text-sm text-text-300 mt-1">{r.comment}</div>
+                                                        )}
+                                                        <div className="text-xs text-text-500 mt-1">{new Date(r.createdAt as any).toLocaleDateString('fr-FR')}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : (
                                     <div className="no-reviews">
@@ -413,6 +457,10 @@ export const ProductDetailPage: React.FC = () => {
                                             </span>
                                         </div>
                                         <div className="detail-item">
+                                            <span className="detail-label">Ce que vous recevez</span>
+                                            <span className="detail-value">{Array.isArray((currentProduct as any).formats) ? ((currentProduct as any).formats as any).join(', ') : ((currentProduct as any).formats || currentProduct.fileType || 'Fichiers du produit')}</span>
+                                        </div>
+                                        <div className="detail-item">
                                             <span className="detail-label">Date de publication</span>
                                             <span className="detail-value">
                                                 {currentProduct.createdAt ? new Date(currentProduct.createdAt).toLocaleDateString('fr-FR') : '—'}
@@ -423,6 +471,10 @@ export const ProductDetailPage: React.FC = () => {
                                             <span className="detail-value">
                                                 {currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}
                                             </span>
+                                        </div>
+                                        <div className="detail-item">
+                                            <span className="detail-label">Licence</span>
+                                            <span className="detail-value">{(currentProduct as any).license || 'Usage personnel et commercial (sauf revente en l’état)'}</span>
                                         </div>
                                     </div>
                                 </div>

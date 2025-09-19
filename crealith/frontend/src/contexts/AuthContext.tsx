@@ -45,6 +45,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // État local pour la gestion des redirections
     const [intendedUrl, setIntendedUrl] = useState<string | null>(null);
 
+    // Vérifier l'authentification au chargement de l'app
+    useEffect(() => {
+        const checkAuth = async () => {
+            const token = localStorage.getItem('crealith_token');
+            if (token && !isAuthenticated) {
+                try {
+                    await dispatch(fetchUserProfile());
+                } catch (error) {
+                    // Token invalide, nettoyer le localStorage
+                    localStorage.removeItem('crealith_token');
+                    localStorage.removeItem('crealith_refresh');
+                }
+            }
+        };
+
+        checkAuth();
+    }, [dispatch, isAuthenticated]);
+
     // Sauvegarder l'URL d'origine quand l'utilisateur est redirigé vers login
     const redirectToLogin = (redirectUrl?: string) => {
         const currentPath = location.pathname + location.search;
@@ -224,10 +242,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Vérifier/rafraîchir le profil au chargement et quand le token change
     useEffect(() => {
         const token = localStorage.getItem('crealith_token');
-        if (token && (!isAuthenticated || !user)) {
+        if (token) {
             refreshProfile();
         }
-    }, [isAuthenticated, user]);
+    }, []);
 
     // Gérer les redirections automatiques
     useEffect(() => {

@@ -20,6 +20,7 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
+import { Download as DownloadIcon } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -27,6 +28,7 @@ export const Header: React.FC = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
   const { items: cartItems } = useAppSelector(state => state.cart);
+  const ordersCount = useAppSelector(s => (s as any)?.orders?.orders?.length || 0);
   const activeMode = useAppSelector(s => s.auth.activeMode);
 
   const cartItemsCount = cartItems.length;
@@ -48,36 +50,64 @@ export const Header: React.FC = () => {
             </Link>
           </div>
 
-          {/* Navigation Desktop - Section centrale ultra-compacte */}
+          {/* Navigation Desktop - Section centrale: marketing (déconnecté) vs. utilitaire (connecté) */}
           <nav className="hidden lg:flex items-center space-x-2 mx-1">
-            <Link
-              to="/"
-              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-            >
-              <Home className="w-3 h-3 group-hover:animate-wiggle" />
-              <span>Accueil</span>
-            </Link>
-            <Link
-              to="/catalog"
-              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-            >
-              <Grid3X3 className="w-3 h-3 group-hover:animate-wiggle" />
-              <span>Catalogue</span>
-            </Link>
-            <Link
-              to="/about"
-              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-            >
-              <Info className="w-3 h-3 group-hover:animate-wiggle" />
-              <span>À propos</span>
-            </Link>
-            <Link
-              to="/contact"
-              className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-            >
-              <Mail className="w-3 h-3 group-hover:animate-wiggle" />
-              <span>Contact</span>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to={activeMode === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard'}
+                  className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Home className="w-3 h-3" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/catalog"
+                  className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Grid3X3 className="w-3 h-3" />
+                  <span>Catalogue</span>
+                </Link>
+                <Link
+                  to="/downloads"
+                  className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <DownloadIcon className="w-3 h-3" />
+                  <span>Téléchargements</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/"
+                  className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Home className="w-3 h-3 group-hover:animate-wiggle" />
+                  <span>Accueil</span>
+                </Link>
+                <Link
+                  to="/catalog"
+                  className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Grid3X3 className="w-3 h-3 group-hover:animate-wiggle" />
+                  <span>Catalogue</span>
+                </Link>
+                <Link
+                  to="/about"
+                  className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Info className="w-3 h-3 group-hover:animate-wiggle" />
+                  <span>À propos</span>
+                </Link>
+                <Link
+                  to="/contact"
+                  className="flex items-center space-x-1 text-gray-400 hover:text-primary-400 transition-all duration-300 group font-medium px-1 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                >
+                  <Mail className="w-3 h-3 group-hover:animate-wiggle" />
+                  <span>Contact</span>
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* Search Bar - Section centrale maximisée */}
@@ -142,43 +172,29 @@ export const Header: React.FC = () => {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-56 bg-gray-800 rounded-3xl shadow-large border border-gray-700 py-3 animate-in-down">
+                  <div className="absolute right-0 mt-3 w-64 bg-gray-800 rounded-3xl shadow-large border border-gray-700 py-3 animate-in-down">
                     <div className="px-4 py-2 border-b border-gray-700">
                       <p className="text-sm text-gray-500">Connecté en tant que</p>
                       <p className="font-semibold text-gray-100">{user?.firstName || 'Utilisateur'}</p>
+                      <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                     </div>
 
                     <div className="py-2">
                       <Link
-                        to={activeMode === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard'}
+                        to="/buyer-dashboard"
                         className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
                         <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Tableau de bord</span>
+                        <span className="font-medium">Mon Dashboard</span>
                       </Link>
-                      {user?.role === 'SELLER' && (
-                        <button
-                          onClick={() => {
-                            const next = activeMode === 'SELLER' ? 'BUYER' : 'SELLER';
-                            dispatch(setActiveMode(next as any));
-                            setIsUserMenuOpen(false);
-                            // Redirect according to the new mode
-                            window.location.href = next === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard';
-                          }}
-                          className="w-full text-left flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
-                        >
-                          <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                          <span className="font-medium">Passer en mode {activeMode === 'SELLER' ? 'Acheteur' : 'Vendeur'}</span>
-                        </button>
-                      )}
                       <Link
-                        to="/profile"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                        to="/downloads"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Profil</span>
+                        <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Mes Achats{ordersCount ? ` (${ordersCount})` : ''}</span>
                       </Link>
                       <Link
                         to="/settings"
@@ -188,23 +204,13 @@ export const Header: React.FC = () => {
                         <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
                         <span className="font-medium">Paramètres</span>
                       </Link>
-                      {user?.role !== 'SELLER' && (
-                        <Link
-                          to="/orders"
-                          className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-accent-400 transition-all duration-300 group"
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          <div className="w-2 h-2 bg-accent-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                          <span className="font-medium">Mes commandes</span>
-                        </Link>
-                      )}
                       <Link
-                        to="/favorites"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-secondary-400 transition-all duration-300 group"
+                        to="/invoices"
+                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        <div className="w-2 h-2 bg-secondary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Favoris</span>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
+                        <span className="font-medium">Facturation</span>
                       </Link>
                     </div>
 
@@ -261,38 +267,85 @@ export const Header: React.FC = () => {
         {isMenuOpen && (
           <div className="lg:hidden border-t border-gray-700 py-4 animate-in-down">
             <nav className="space-y-2">
-              <Link
-                to="/"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Home className="w-5 h-5 group-hover:animate-wiggle" />
-                <span className="font-medium">Accueil</span>
-              </Link>
-              <Link
-                to="/catalog"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Grid3X3 className="w-5 h-5 group-hover:animate-wiggle" />
-                <span className="font-medium">Catalogue</span>
-              </Link>
-              <Link
-                to="/about"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Info className="w-5 h-5 group-hover:animate-wiggle" />
-                <span className="font-medium">À propos</span>
-              </Link>
-              <Link
-                to="/contact"
-                className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                <Mail className="w-5 h-5 group-hover:animate-wiggle" />
-                <span className="font-medium">Contact</span>
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <Link
+                    to={activeMode === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard'}
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Home className="w-5 h-5" />
+                    <span className="font-medium">Dashboard</span>
+                  </Link>
+                  <Link
+                    to="/catalog"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Grid3X3 className="w-5 h-5" />
+                    <span className="font-medium">Catalogue</span>
+                  </Link>
+                  <Link
+                    to="/downloads"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <DownloadIcon className="w-5 h-5" />
+                    <span className="font-medium">Téléchargements</span>
+                  </Link>
+                  <Link
+                    to="/invoices"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span className="font-medium">Facturation</span>
+                  </Link>
+                  <Link
+                    to="/orders"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    <span className="font-medium">Mes commandes</span>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Home className="w-5 h-5 group-hover:animate-wiggle" />
+                    <span className="font-medium">Accueil</span>
+                  </Link>
+                  <Link
+                    to="/catalog"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Grid3X3 className="w-5 h-5 group-hover:animate-wiggle" />
+                    <span className="font-medium">Catalogue</span>
+                  </Link>
+                  <Link
+                    to="/about"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Info className="w-5 h-5 group-hover:animate-wiggle" />
+                    <span className="font-medium">À propos</span>
+                  </Link>
+                  <Link
+                    to="/contact"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Mail className="w-5 h-5 group-hover:animate-wiggle" />
+                    <span className="font-medium">Contact</span>
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         )}

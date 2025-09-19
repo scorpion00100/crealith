@@ -264,7 +264,6 @@ export const RegisterPage: React.FC = () => {
                   onChange={handleInputChange}
                 />
                 <div className="account-type-content">
-                  <div className="account-type-icon">🛒</div>
                   <div className="account-type-info">
                     <h4>Acheteur</h4>
                     <p>Achetez des produits numériques</p>
@@ -281,7 +280,6 @@ export const RegisterPage: React.FC = () => {
                   onChange={handleInputChange}
                 />
                 <div className="account-type-content">
-                  <div className="account-type-icon">🎨</div>
                   <div className="account-type-info">
                     <h4>Vendeur</h4>
                     <p>Vendez vos créations</p>

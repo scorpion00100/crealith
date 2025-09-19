@@ -11,6 +11,7 @@ import downloadRoutes from './download.routes';
 import webhookRoutes from './webhook.routes';
 import imagekitRoutes from './imagekit.routes';
 import uploadsRoutes from './uploads.routes';
+import cartRoutes from './cart.routes';
 import healthRoutes from './health.routes';
 
 const router = Router();
@@ -49,6 +50,7 @@ router.use('/downloads', downloadRoutes);
 router.use('/webhook', webhookRoutes);
 router.use('/imagekit', imagekitRoutes);
 router.use('/uploads', uploadsRoutes);
+router.use('/cart', cartRoutes);
 router.use('/health', healthRoutes);
 
 export default router;

@@ -218,8 +218,10 @@ export class AuthService {
     };
     const candidates = Array.from(new Set([data.email.toLowerCase(), normalizeEmail(data.email)]));
     let user = await prisma.user.findFirst({ where: { isActive: true, email: { in: candidates } } });
-    // Fallback en test si non trouvé en base
-    if (!user && process.env.NODE_ENV === 'test') {
+    
+    // SÉCURITÉ : Fallback mémoire UNIQUEMENT en mode test strict
+    // et SEULEMENT si l'utilisateur n'existe vraiment pas en base
+    if (!user && process.env.NODE_ENV === 'test' && process.env.STRICT_TEST_MODE === 'true') {
       const tUser = AuthService.testUsers.get(candidates[0]) || AuthService.testUsers.get(candidates[1]);
       if (tUser) {
         user = {
@@ -248,8 +250,9 @@ export class AuthService {
       throw createError.unauthorized('Invalid credentials');
     }
 
-    // Vérifier que l'email est vérifié
-    if (!user.emailVerified) {
+    // Vérifier que l'email est vérifié (bypass optionnel en dev via env)
+    const allowUnverifiedLogin = process.env.ALLOW_UNVERIFIED_LOGIN === 'true' && process.env.NODE_ENV !== 'production';
+    if (!user.emailVerified && !allowUnverifiedLogin) {
       throw createError.unauthorized('Email not verified. Please check your email and click the verification link.');
     }
 
@@ -279,9 +282,9 @@ export class AuthService {
       // Vérifier le refresh token
       const payload = verifyRefreshToken(refreshToken);
       
-      // En environnement de test, ignorer la présence en Redis pour faciliter les tests
+      // SÉCURITÉ : Toujours vérifier le token en Redis (sauf en test strict)
       let tokenData: any = null;
-      if (process.env.NODE_ENV !== 'test') {
+      if (process.env.NODE_ENV !== 'test' || process.env.STRICT_TEST_MODE !== 'true') {
         tokenData = await redisService.getRefreshToken(refreshToken);
         if (!tokenData || tokenData.userId !== payload.userId) {
           throw createError.unauthorized('Invalid refresh token');
@@ -292,16 +295,11 @@ export class AuthService {
         }
       }
 
-      // Récupérer l'utilisateur (en test, ignorer isActive pour éviter les faux négatifs)
-      const user = process.env.NODE_ENV === 'test'
-        ? await prisma.user.findUnique({
-            where: { id: payload.userId },
-            select: { id: true, email: true, firstName: true, lastName: true, role: true }
-          })
-        : await prisma.user.findFirst({
-            where: { id: payload.userId, isActive: true },
-            select: { id: true, email: true, firstName: true, lastName: true, role: true }
-          });
+      // SÉCURITÉ : Toujours vérifier que l'utilisateur existe en base et est actif
+      const user = await prisma.user.findFirst({
+        where: { id: payload.userId, isActive: true },
+        select: { id: true, email: true, firstName: true, lastName: true, role: true }
+      });
 
       if (!user) {
         throw createError.unauthorized('User not found');
@@ -311,7 +309,8 @@ export class AuthService {
       const newAccessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
       const newRefreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
 
-      if (process.env.NODE_ENV !== 'test') {
+      // SÉCURITÉ : Toujours gérer les tokens Redis (sauf en test strict)
+      if (process.env.NODE_ENV !== 'test' || process.env.STRICT_TEST_MODE !== 'true') {
         // Révoquer l'ancien refresh token
         await redisService.revokeRefreshToken(refreshToken);
         // Stocker le nouveau refresh token

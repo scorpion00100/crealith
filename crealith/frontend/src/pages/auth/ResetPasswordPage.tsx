@@ -88,11 +88,8 @@ export const ResetPasswordPage: React.FC = () => {
                     duration: 5000,
                 }));
 
-                // Rediriger vers la page de connexion
-                navigate('/login', {
-                    state: { message: 'Mot de passe réinitialisé avec succès !' },
-                    replace: true
-                });
+                // Rediriger vers une petite page de confirmation avant login
+                navigate('/reset-success', { replace: true });
             } else {
                 throw new Error((data as any).message || 'Erreur lors de la réinitialisation');
             }
@@ -116,7 +113,6 @@ export const ResetPasswordPage: React.FC = () => {
             <div className="reset-password-container">
                 <div className="reset-password-header">
                     <div className="reset-password-logo">
-                        <div className="logo-icon">🔒</div>
                         <div className="logo-text">Crealith</div>
                     </div>
                     <h1 className="reset-password-title">Nouveau mot de passe</h1>
@@ -136,7 +132,7 @@ export const ResetPasswordPage: React.FC = () => {
                             onChange={handleInputChange}
                             required
                             placeholder="Votre nouveau mot de passe"
-                            className={`form-input ${errors.password ? 'error' : ''}`}
+                            className={`form-input text-gray-900 ${errors.password ? 'error' : ''}`}
                         />
                         {errors.password && (
                             <span className="field-error">{errors.password}</span>
@@ -170,7 +166,7 @@ export const ResetPasswordPage: React.FC = () => {
                             onChange={handleInputChange}
                             required
                             placeholder="Confirmez votre nouveau mot de passe"
-                            className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                            className={`form-input text-gray-900 ${errors.confirmPassword ? 'error' : ''}`}
                         />
                         {errors.confirmPassword && (
                             <span className="field-error">{errors.confirmPassword}</span>

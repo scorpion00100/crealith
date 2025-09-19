@@ -391,7 +391,8 @@ router.post('/forgot-password', passwordResetRateLimit, authValidators.forgotPas
 
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
+      ...(process.env.NODE_ENV !== 'production' && (result as any).resetUrl ? { resetUrl: (result as any).resetUrl } : {})
     });
   } catch (error) {
     next(error);

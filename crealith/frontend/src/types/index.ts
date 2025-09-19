@@ -65,6 +65,7 @@ export interface User {
   bio?: string;
   stripeAccountId?: string;
   isActive: boolean;
+  emailVerified?: boolean;
   createdAt: string;
   updatedAt: string;
   // Garde pour compatibilité descendante

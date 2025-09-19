@@ -163,8 +163,8 @@ export const CheckoutPage: React.FC = () => {
             message: 'Paiement réussi ! Votre commande a été confirmée.',
             duration: 5000
         }));
-        // Redirection douce vers les commandes
-        setTimeout(() => navigate('/orders'), 1500);
+        // Redirection vers les téléchargements
+        setTimeout(() => navigate('/downloads'), 1500);
     };
 
     const handleError = (message: string) => {
@@ -196,7 +196,10 @@ export const CheckoutPage: React.FC = () => {
                         <p>Votre commande a été confirmée et vos fichiers sont maintenant disponibles.</p>
 
                         <div className="success-actions">
-                            <button className="btn btn-primary" onClick={handleViewOrders}>
+                            <button className="btn btn-primary" onClick={() => navigate('/downloads')}>
+                                Aller à mes téléchargements
+                            </button>
+                            <button className="btn btn-outline" onClick={handleViewOrders}>
                                 Voir mes commandes
                             </button>
                             <button className="btn btn-outline" onClick={handleContinueShopping}>

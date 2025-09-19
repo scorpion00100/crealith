@@ -51,9 +51,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     const buyerNavItems: NavItem[] = [
         { label: 'Vue d\'ensemble', href: '/buyer-dashboard', icon: <Home className="w-5 h-5" /> },
         { label: 'Mes commandes', href: '/buyer-dashboard/orders', icon: <ShoppingBag className="w-5 h-5" /> },
-        { label: 'Téléchargements', href: '/buyer-dashboard/downloads', icon: <Download className="w-5 h-5" /> },
+        { label: 'Téléchargements', href: '/downloads', icon: <Download className="w-5 h-5" /> },
         { label: 'Favoris', href: '/buyer-dashboard/favorites', icon: <Heart className="w-5 h-5" /> },
-        { label: 'Avis', href: '/buyer-dashboard/reviews', icon: <FileText className="w-5 h-5" /> },
+        { label: 'Avis', href: '/my-reviews', icon: <FileText className="w-5 h-5" /> },
         { label: 'Paramètres', href: '/buyer-dashboard/settings', icon: <Settings className="w-5 h-5" /> }
     ];
 

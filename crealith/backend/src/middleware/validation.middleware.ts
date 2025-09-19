@@ -318,7 +318,7 @@ export const authValidators = {
       .notEmpty()
       .withMessage('Reset token is required'),
     
-    body('password')
+    body('newPassword')
       .isLength({ min: 8, max: 128 })
       .custom(customValidators.isValidPassword)
       .withMessage('Password must be strong and secure'),

@@ -1,28 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ShoppingBag,
     Heart,
     Download,
     Star,
-    TrendingUp,
-    Clock,
     DollarSign,
-    Package,
-    Eye,
-    Plus
+    Search,
+    ArrowRight,
+    FileText,
+    MessageSquare
 } from 'lucide-react';
 import { Sidebar } from '@/components/marketplace/Sidebar';
 import { SearchBar } from '@/components/marketplace/SearchBar';
-import { ProductCard } from '@/components/marketplace/ProductCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
-import { fetchCart, addToCartAsync, updateCartItemAsync, removeFromCartAsync } from '@/store/slices/cartSlice';
+import { fetchCart, addToCartAsync } from '@/store/slices/cartSlice';
 import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/utils/cn';
+import { fetchProducts } from '@/store/slices/productSlice';
 
-// Stats basiques pour MVP
+// Données mock pour le MVP
 const mockStats = {
     totalPurchases: 0,
     totalSpent: 0,
@@ -36,109 +35,160 @@ const mockRecentPurchases = [
         id: '1',
         title: 'Template PowerPoint Moderne',
         price: 15.99,
-        image: '/placeholder-product.jpg',
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI4MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PC9zdmc+',
         purchaseDate: '2025-01-08',
         downloads: 2,
         rating: 4.8
     }
 ];
 
+// Produits recommandés façon Etsy Digital
 const mockRecommendedProducts = [
     {
         id: '4',
         title: 'Template Figma UI Kit',
         price: 25.99,
         originalPrice: 35.99,
-        image: '/placeholder-product.jpg',
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkZpZ21hPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5VSSBLaXQ8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI3MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkRlc2lnbjwvdGV4dD48L3N2Zz4=',
         rating: 4.9,
-        reviewCount: 156,
-        downloads: 1200,
-        isFeatured: true,
-        discount: 28,
-        category: { name: 'Templates' },
-        seller: { firstName: 'Alex', lastName: 'Designer' },
-        createdAt: '2025-01-10'
+        reviews: 127,
+        category: 'Design',
+        seller: 'DesignStudio'
+    },
+    {
+        id: '5',
+        title: 'Pack Icônes Minimalistes',
+        price: 12.99,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkljw7RuZXM8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1pbmltYWxpc3RlczwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjcwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UGFjazwvdGV4dD48L3N2Zz4=',
+        rating: 4.7,
+        reviews: 89,
+        category: 'Design',
+        seller: 'IconMaster'
+    },
+    {
+        id: '6',
+        title: 'Template Canva Business',
+        price: 18.99,
+        originalPrice: 24.99,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkNhbnZhPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5CdXNpbmVzczwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjcwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVtcGxhdGU8L3RleHQ+PC9zdmc+',
+        rating: 4.8,
+        reviews: 156,
+        category: 'Marketing',
+        seller: 'BusinessPro'
+    },
+    {
+        id: '7',
+        title: 'Mockup iPhone Premium',
+        price: 22.99,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmlQaG9uZTwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TW9ja3VwPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNzAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QcmVtaXVtPC90ZXh0Pjwvc3ZnPg==',
+        rating: 4.9,
+        reviews: 203,
+        category: 'Design',
+        seller: 'MockupKing'
+    },
+    {
+        id: '8',
+        title: 'Template PowerPoint Executive',
+        price: 29.99,
+        originalPrice: 39.99,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkV4ZWN1dGl2ZTwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UG93ZXJQb2ludDwvdGV4dD48dGV4dCB4PSI1MCUiIHk9IjcwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+VGVtcGxhdGU8L3RleHQ+PC9zdmc+',
+        rating: 4.6,
+        reviews: 78,
+        category: 'Business',
+        seller: 'ExecutiveDesign'
+    },
+    {
+        id: '9',
+        title: 'Pack Logos Vectoriels',
+        price: 15.99,
+        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSIzMCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPkxvZ29zPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTIiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WZWN0b3JpZWxzPC90ZXh0Pjx0ZXh0IHg9IjUwJSIgeT0iNzAlIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTAiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5QYWNrPC90ZXh0Pjwvc3ZnPg==',
+        rating: 4.8,
+        reviews: 134,
+        category: 'Design',
+        seller: 'LogoMaster'
     }
 ];
 
-export const BuyerDashboardPage: React.FC = () => {
+const BuyerDashboardPage: React.FC = () => {
+    const { user, isAuthenticated } = useAuth();
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+
+    const { cart, favorites } = useAppSelector((state) => ({
+        cart: state.cart,
+        favorites: state.favorites
+    }));
+
+    // Debug logs
+    console.log('🔍 BuyerDashboardPage - État:', {
+        isAuthenticated,
+        user: user?.firstName,
+        cartItems: cart.items.length,
+        favoritesCount: favorites.items.length,
+        token: localStorage.getItem('crealith_token') ? 'présent' : 'absent'
+    });
+
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [activeTab] = useState<'overview'>('overview');
-    const { user } = useAuth();
-    const [isSearching, setIsSearching] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [results, setResults] = useState<any[]>(mockRecommendedProducts);
+    const [isSearching, setIsSearching] = useState(false);
+    const [results, setResults] = useState<any[]>([]);
 
-    // Store selectors
-    const cart = useAppSelector((s) => s.cart);
-    const favorites = useAppSelector((s) => s.favorites.items);
-
-    const isInCart = (id: string) => cart.items.some((i) => i.product.id === id);
-
-    // Charger le panier serveur
-    React.useEffect(() => {
+    // Charger les données au montage
+    useEffect(() => {
         dispatch(fetchCart());
+        dispatch(fetchProducts());
     }, [dispatch]);
 
     const handleAddToCart = async (product: any) => {
+        console.log('🛒 handleAddToCart appelé avec:', product);
+
+        if (!isAuthenticated) {
+            console.log('❌ Utilisateur non authentifié');
+            dispatch(addNotification({
+                type: 'warning',
+                message: 'Connectez-vous pour ajouter au panier',
+                duration: 4000
+            }));
+            navigate('/login?redirect=' + window.location.pathname);
+            return;
+        }
+
+        console.log('✅ Utilisateur authentifié, ajout au panier...');
         try {
             await dispatch(addToCartAsync({ productId: product.id, quantity: 1 })).unwrap();
+            // Synchroniser le panier après l'ajout
+            await dispatch(fetchCart()).unwrap();
             dispatch(addNotification({ type: 'success', message: 'Ajouté au panier', duration: 2000 }));
-        } catch {
-            dispatch(addNotification({ type: 'error', message: 'Erreur ajout au panier', duration: 3000 }));
+            console.log('✅ Produit ajouté au panier avec succès');
+        } catch (error: any) {
+            console.error('❌ Erreur ajout au panier:', error);
+            dispatch(addNotification({
+                type: 'error',
+                message: error.message || 'Erreur ajout au panier',
+                duration: 3000
+            }));
         }
     };
 
-    const handleDecreaseQty = async (id: string) => {
-        const item = cart.items.find((p) => p.id === id);
-        if (!item) return;
-        const nextQty = item.quantity - 1;
-        try {
-            if (nextQty <= 0) {
-                await dispatch(removeFromCartAsync(id)).unwrap();
-                dispatch(addNotification({ type: 'info', message: 'Retiré du panier', duration: 2000 }));
-            } else {
-                await dispatch(updateCartItemAsync({ id, quantity: nextQty })).unwrap();
-            }
-        } catch {
-            dispatch(addNotification({ type: 'error', message: 'Erreur mise à jour quantité', duration: 3000 }));
-        }
-    };
-
-    const handleIncreaseQty = async (id: string) => {
-        const item = cart.items.find((p) => p.id === id);
-        if (!item) return;
-        try {
-            await dispatch(updateCartItemAsync({ id, quantity: item.quantity + 1 })).unwrap();
-        } catch {
-            dispatch(addNotification({ type: 'error', message: 'Erreur mise à jour quantité', duration: 3000 }));
-        }
-    };
-
-    const handleRemoveFromCart = async (id: string) => {
-        try {
-            await dispatch(removeFromCartAsync(id)).unwrap();
-            dispatch(addNotification({ type: 'info', message: 'Retiré du panier', duration: 2000 }));
-        } catch {
-            dispatch(addNotification({ type: 'error', message: 'Erreur suppression', duration: 3000 }));
-        }
-    };
-
-    const cartTotal = cart.items.reduce((sum, i) => sum + parseFloat(i.product.price) * i.quantity, 0);
-
-    const isFavorite = (id: string) => favorites.some((p) => p.id === id);
+    const isFavorite = (id: string) => favorites.items.some((p: any) => p.id === id);
     const handleToggleFavorite = async (product: any) => {
+        console.log('❤️ handleToggleFavorite appelé avec:', product);
+        console.log('❤️ Est déjà favori?', isFavorite(product.id));
+
         try {
             if (isFavorite(product.id)) {
+                console.log('❤️ Suppression des favoris...');
                 await dispatch(removeFavoriteAsync(product.id)).unwrap();
                 dispatch(addNotification({ type: 'info', message: 'Retiré des favoris', duration: 2000 }));
+                console.log('❤️ ✅ Supprimé des favoris');
             } else {
+                console.log('❤️ Ajout aux favoris...');
                 await dispatch(addFavoriteAsync(product.id)).unwrap();
                 dispatch(addNotification({ type: 'success', message: 'Ajouté aux favoris', duration: 2000 }));
+                console.log('❤️ ✅ Ajouté aux favoris');
             }
-        } catch {
+        } catch (error) {
+            console.error('❤️ ❌ Erreur favoris:', error);
             dispatch(addNotification({ type: 'error', message: 'Erreur favoris', duration: 3000 }));
         }
     };
@@ -148,7 +198,9 @@ export const BuyerDashboardPage: React.FC = () => {
         setSearchQuery(query);
         window.setTimeout(() => {
             const q = query.toLowerCase();
-            const filtered = mockRecommendedProducts.filter(p => p.title.toLowerCase().includes(q));
+            const filtered = (results.length ? results : mockRecommendedProducts).filter((p: any) =>
+                (p.title || p.name || '').toLowerCase().includes(q)
+            );
             setResults(filtered);
             setIsSearching(false);
         }, 400);
@@ -168,16 +220,16 @@ export const BuyerDashboardPage: React.FC = () => {
         change?: string;
         trend?: 'up' | 'down' | 'neutral';
     }> = ({ title, value, icon: Icon, change, trend = 'neutral' }) => (
-        <div className="bg-background-800 rounded-2xl border border-background-700 p-6 hover:border-primary-500/30 transition-all duration-300">
+        <div className="bg-background-800 rounded-2xl border border-background-700 p-5 md:p-6 h-full flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
-                <div className="p-3 bg-primary-500/20 rounded-xl">
+                <div className="p-3 bg-primary-500/15 rounded-xl">
                     <Icon className="w-6 h-6 text-primary-400" />
                 </div>
                 {change && (
                     <span className={cn(
-                        'text-sm font-medium px-2 py-1 rounded-full',
-                        trend === 'up' && 'text-success-400 bg-success-500/20',
-                        trend === 'down' && 'text-error-400 bg-error-500/20',
+                        'text-xs md:text-sm font-medium px-2 py-1 rounded-full',
+                        trend === 'up' && 'text-success-400 bg-success-500/15',
+                        trend === 'down' && 'text-error-400 bg-error-500/15',
                         trend === 'neutral' && 'text-text-400 bg-background-700'
                     )}>
                         {change}
@@ -194,11 +246,20 @@ export const BuyerDashboardPage: React.FC = () => {
     const RecentPurchaseCard: React.FC<{ purchase: any }> = ({ purchase }) => (
         <div className="bg-background-800 rounded-xl border border-background-700 p-4 hover:border-primary-500/30 transition-all duration-300">
             <div className="flex gap-4">
-                <div className="w-16 h-16 bg-background-700 rounded-lg flex-shrink-0">
+                <div className="w-16 h-16 bg-background-700 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center">
                     <img
                         src={purchase.image}
                         alt={purchase.title}
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            // Fallback si l'image ne charge pas
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                                parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-xs text-center">${purchase.title.split(' ')[0]}</div>`;
+                            }
+                        }}
                     />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -234,237 +295,339 @@ export const BuyerDashboardPage: React.FC = () => {
             />
 
             {/* Main Content */}
-            <div className="lg:ml-80 lg:pl-0">
+            <div className="lg:ml-80">
                 {/* Header */}
-                <header className="bg-background-800 border-b border-background-700 px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <button
-                                onClick={() => setSidebarOpen(true)}
-                                aria-controls="buyer-sidebar"
-                                aria-expanded={sidebarOpen}
-                                aria-label="Ouvrir le menu"
-                                className="lg:hidden p-2 text-text-400 hover:text-text-200 hover:bg-background-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            >
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                                </svg>
-                            </button>
-                            <div>
-                                <h1 className="text-2xl font-bold text-text-100">
-                                    Bonjour, {user?.firstName} ! 👋
-                                </h1>
-                                <p className="text-text-400">
-                                    Voici un aperçu de votre activité sur Crealith
-                                </p>
+                <header className="bg-background-800 border-b border-background-700">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setSidebarOpen(true)}
+                                    aria-controls="buyer-sidebar"
+                                    aria-expanded={sidebarOpen}
+                                    aria-label="Ouvrir le menu"
+                                    className="lg:hidden p-2 text-text-400 hover:text-text-200 hover:bg-background-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h1 className="text-xl md:text-2xl font-bold text-text-100">
+                                        Bonjour, {user?.firstName} ! 👋
+                                    </h1>
+                                    <p className="text-text-400 text-sm md:text-base">
+                                        Découvrez des créations uniques
+                                    </p>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => navigate('/favorites')}
-                                className="px-3 py-2 rounded-lg bg-background-700 text-text-200 hover:bg-background-600"
-                            >
-                                Favoris
-                            </button>
-                            <button
-                                onClick={() => navigate('/cart')}
-                                className="px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600"
-                            >
-                                Panier
-                            </button>
-                            <SearchBar className="hidden md:block" onSearch={handleSearch} />
+                            <div className="flex items-center gap-3">
+                                <SearchBar className="hidden md:block" onSearch={handleSearch} />
+                                <button
+                                    onClick={() => navigate('/favorites')}
+                                    className="px-3 py-2 rounded-lg bg-background-700 text-text-200 hover:bg-background-600"
+                                >
+                                    Favoris
+                                </button>
+                                <button
+                                    onClick={() => navigate('/cart')}
+                                    className="px-3 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600"
+                                >
+                                    Panier ({cart.items.length})
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </header>
 
-                {/* Content */}
-                <main className="p-6">
-                    {/* Tabs */}
-                    <div className="flex gap-1 mb-8 bg-background-800 p-1 rounded-2xl w-fit">
-                        <button
-                            className={cn(
-                                'flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200',
-                                'bg-primary-500 text-white'
-                            )}
-                        >
-                            <TrendingUp className="w-4 h-4" />
-                            Vue d'ensemble
-                        </button>
-                    </div>
-
-                    {/* Overview Tab */}
-                    {activeTab === 'overview' && (
-                        <div className="space-y-8">
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                <StatCard
-                                    title="Total des achats"
-                                    value={mockStats.totalPurchases}
-                                    icon={ShoppingBag}
-                                    change=""
-                                    trend="neutral"
-                                />
-                                <StatCard
-                                    title="Montant dépensé"
-                                    value={formatPrice(mockStats.totalSpent)}
-                                    icon={DollarSign}
-                                    change=""
-                                    trend="neutral"
-                                />
-                                <StatCard
-                                    title="Produits favoris"
-                                    value={mockStats.favoritesCount}
-                                    icon={Heart}
-                                    change=""
-                                    trend="neutral"
-                                />
-                                <StatCard
-                                    title="Téléchargements"
-                                    value={mockStats.downloadsCount}
-                                    icon={Download}
-                                    change=""
-                                    trend="neutral"
-                                />
+                {/* Page Content - Design Etsy Digital */}
+                <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <div className="space-y-8">
+                        {/* Hero Section avec recherche intégrée */}
+                        <section className="bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-2xl border border-primary-500/20 p-8">
+                            <div className="text-center mb-8">
+                                <h1 className="text-3xl md:text-4xl font-bold text-text-100 mb-4">
+                                    Découvrez des créations uniques
+                                </h1>
+                                <p className="text-lg text-text-400 max-w-2xl mx-auto">
+                                    Trouvez des produits numériques de qualité, créés par des designers talentueux
+                                </p>
                             </div>
 
-                            {/* Recent Purchases */}
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div>
-                                    <div className="flex items-center justify-between mb-6">
-                                        <h2 className="text-xl font-bold text-text-100">Achats récents</h2>
-                                        <button onClick={() => navigate('/orders')} className="text-primary-400 hover:text-primary-300 font-medium">
-                                            Voir mes commandes
-                                        </button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        {mockRecentPurchases.map((purchase) => (
-                                            <RecentPurchaseCard key={purchase.id} purchase={purchase} />
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Quick Actions */}
-                                <div>
-                                    <h2 className="text-xl font-bold text-text-100 mb-6">Actions rapides</h2>
-                                    <div className="space-y-4">
-                                        <button onClick={() => navigate('/favorites')} className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-primary-500/20 rounded-lg group-hover:bg-primary-500/30 transition-colors">
-                                                    <Heart className="w-5 h-5 text-primary-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-text-100">Voir mes favoris</p>
-                                                    <p className="text-sm text-text-400">Produits sauvegardés</p>
-                                                </div>
-                                            </div>
-                                        </button>
-
-                                        <button onClick={() => navigate('/orders')} className="w-full p-4 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-secondary-500/20 rounded-lg group-hover:bg-secondary-500/30 transition-colors">
-                                                    <Download className="w-5 h-5 text-secondary-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-text-100">Mes commandes</p>
-                                                    <p className="text-sm text-text-400">Téléchargements après paiement</p>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Cart Summary */}
-                            <div className="bg-background-800 border border-background-700 rounded-2xl p-4 mb-8">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-bold text-text-100">Panier</h3>
-                                    <span className="text-sm text-text-400">{cart.items.length} article{cart.items.length > 1 ? 's' : ''}</span>
-                                </div>
-                                {cart.items.length === 0 ? (
-                                    <p className="text-text-400">Votre panier est vide</p>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {cart.items.map((item) => (
-                                            <div key={item.id} className="flex items-center justify-between">
-                                                <div className="min-w-0">
-                                                    <p className="text-text-100 truncate">{item.product.title}</p>
-                                                    <p className="text-text-400 text-sm">{item.quantity} × {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(parseFloat(item.product.price))}</p>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleDecreaseQty(item.id)}>-</button>
-                                                    <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleIncreaseQty(item.id)}>+</button>
-                                                    <button className="px-2 py-1 bg-background-700 rounded" onClick={() => handleRemoveFromCart(item.id)}>Retirer</button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                        <div className="pt-3 mt-2 border-t border-background-700 flex items-center justify-between">
-                                            <span className="text-text-400">Total</span>
-                                            <span className="text-text-100 font-bold">{new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(cartTotal)}</span>
-                                        </div>
-                                        <button className="w-full mt-3 px-4 py-2 rounded-xl bg-primary-500 text-white disabled:opacity-50" disabled={cart.items.length === 0} onClick={() => navigate('/checkout')}>
-                                            Passer au paiement
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Recommended Products */}
-                            <div>
-                                <div className="flex items-center justify-between mb-6">
-                                    <h2 className="text-xl font-bold text-text-100">Recommandés pour vous</h2>
-                                    <button onClick={() => navigate('/catalog')} className="text-primary-400 hover:text-primary-300 font-medium">
-                                        Voir plus
+                            {/* Barre de recherche principale */}
+                            <div className="max-w-2xl mx-auto">
+                                <div className="relative">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-text-400 w-5 h-5" />
+                                    <input
+                                        type="text"
+                                        placeholder="Rechercher des produits, designers, catégories..."
+                                        className="w-full pl-12 pr-4 py-4 bg-background-800 border border-background-600 rounded-xl text-text-100 placeholder-text-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        onChange={(e) => handleSearch(e.target.value)}
+                                    />
+                                    <button className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors">
+                                        Rechercher
                                     </button>
                                 </div>
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="text-sm text-text-400">
-                                        {isSearching ? 'Chargement des résultats…' : `Résultats (${results.length})`}
-                                    </div>
-                                    {searchQuery && !isSearching && (
-                                        <div className="text-xs text-text-500">Requête: “{searchQuery}”</div>
-                                    )}
-                                </div>
-
-                                {isSearching && (
-                                    <div className="w-full py-10 text-center text-text-400">Chargement…</div>
-                                )}
-
-                                {!isSearching && results.length === 0 && (
-                                    <div className="w-full py-10 text-center">
-                                        <p className="text-text-300 mb-3">Aucun produit ne correspond à votre recherche</p>
-                                        <button
-                                            className="px-4 py-2 bg-background-700 hover:bg-background-600 rounded-lg text-text-200"
-                                            onClick={() => { setResults(mockRecommendedProducts); setSearchQuery(''); }}
-                                        >
-                                            Réinitialiser la recherche
-                                        </button>
-                                    </div>
-                                )}
-
-                                {!isSearching && results.length > 0 && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {results.map((product) => (
-                                            <ProductCard
-                                                key={product.id}
-                                                product={product}
-                                                showSeller={true}
-                                                onAddToCart={() => handleAddToCart(product)}
-                                                isInCart={isInCart(product.id)}
-                                                onAddToFavorites={() => handleToggleFavorite(product)}
-                                                isFavorite={isFavorite(product.id)}
-                                                onQuickView={(id) => navigate(`/product/${id}`)}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    )}
 
-                    {/* Sections non-implémentées retirées pour MVP */}
+                            {/* Actions rapides */}
+                            <div className="flex flex-wrap justify-center gap-4 mt-6">
+                                <button
+                                    onClick={() => navigate('/catalog?category=design')}
+                                    className="px-4 py-2 bg-background-800 hover:bg-background-700 text-text-200 rounded-lg border border-background-600 transition-colors"
+                                >
+                                    Design
+                                </button>
+                                <button
+                                    onClick={() => navigate('/catalog?category=marketing')}
+                                    className="px-4 py-2 bg-background-800 hover:bg-background-700 text-text-200 rounded-lg border border-background-600 transition-colors"
+                                >
+                                    Marketing
+                                </button>
+                                <button
+                                    onClick={() => navigate('/catalog?category=development')}
+                                    className="px-4 py-2 bg-background-800 hover:bg-background-700 text-text-200 rounded-lg border border-background-600 transition-colors"
+                                >
+                                    Développement
+                                </button>
+                                <button
+                                    onClick={() => navigate('/catalog?category=business')}
+                                    className="px-4 py-2 bg-background-800 hover:bg-background-700 text-text-200 rounded-lg border border-background-600 transition-colors"
+                                >
+                                    Business
+                                </button>
+                            </div>
+                        </section>
+
+                        {/* Produits recommandés - Style Etsy */}
+                        <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-text-100 mb-2">Recommandés pour vous</h2>
+                                    <p className="text-text-400">Basé sur vos préférences et l'activité récente</p>
+                                </div>
+                                <button
+                                    onClick={() => navigate('/catalog')}
+                                    className="text-primary-400 hover:text-primary-300 text-sm font-medium flex items-center gap-2 transition-colors px-4 py-2 rounded-lg hover:bg-primary-500/10"
+                                >
+                                    Voir tout
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Grille de produits */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {mockRecommendedProducts.map((product) => (
+                                    <div key={product.id} className="group bg-background-700 rounded-xl border border-background-600 overflow-hidden hover:border-primary-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/10">
+                                        <div className="aspect-square bg-background-600 relative overflow-hidden">
+                                            <img
+                                                src={product.image}
+                                                alt={product.title}
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                onError={(e) => {
+                                                    // Fallback si l'image ne charge pas
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.style.display = 'none';
+                                                    const parent = target.parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-sm text-center p-2">${product.title.split(' ')[0]}</div>`;
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => handleToggleFavorite(product)}
+                                                className="absolute top-3 right-3 p-2 bg-background-800/80 hover:bg-background-700 rounded-full transition-colors"
+                                            >
+                                                <Heart className={cn(
+                                                    "w-4 h-4",
+                                                    isFavorite(product.id) ? "text-secondary-400 fill-secondary-400" : "text-text-400"
+                                                )} />
+                                            </button>
+                                            {product.originalPrice && (
+                                                <div className="absolute top-3 left-3 px-2 py-1 bg-error-500 text-white text-xs font-bold rounded">
+                                                    -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="p-4">
+                                            <h3 className="font-medium text-text-100 mb-2 group-hover:text-primary-400 transition-colors overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                {product.title}
+                                            </h3>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-1">
+                                                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                                    <span className="text-sm text-text-400">{product.rating}</span>
+                                                    <span className="text-sm text-text-400">({product.reviews})</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-lg font-bold text-primary-400">
+                                                        {formatPrice(product.price)}
+                                                    </span>
+                                                    {product.originalPrice && (
+                                                        <span className="block text-sm text-text-400 line-through">
+                                                            {formatPrice(product.originalPrice)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    console.log('🖱️ Bouton cliqué pour produit:', product.title);
+                                                    handleAddToCart(product);
+                                                }}
+                                                className="w-full py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium group-hover:shadow-md"
+                                            >
+                                                Ajouter au panier
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        {/* Stats et activité récente */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Stats personnelles */}
+                            <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                                <h2 className="text-xl font-bold text-text-100 mb-6">Votre activité</h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <StatCard
+                                        title="Achats"
+                                        value={mockStats.totalPurchases}
+                                        icon={ShoppingBag}
+                                        change="+2 ce mois"
+                                        trend="up"
+                                    />
+                                    <StatCard
+                                        title="Dépensé"
+                                        value={formatPrice(mockStats.totalSpent)}
+                                        icon={DollarSign}
+                                        change="+15%"
+                                        trend="up"
+                                    />
+                                    <StatCard
+                                        title="Favoris"
+                                        value={mockStats.favoritesCount}
+                                        icon={Heart}
+                                        change="+3"
+                                        trend="up"
+                                    />
+                                    <StatCard
+                                        title="Téléchargements"
+                                        value={mockStats.downloadsCount}
+                                        icon={Download}
+                                        change="+1"
+                                        trend="up"
+                                    />
+                                </div>
+                            </section>
+
+                            {/* Achats récents */}
+                            <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-bold text-text-100">Achats récents</h2>
+                                    <button
+                                        onClick={() => navigate('/downloads')}
+                                        className="text-primary-400 hover:text-primary-300 text-sm font-medium flex items-center gap-1 transition-colors"
+                                    >
+                                        Voir tout
+                                        <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="space-y-4">
+                                    {mockRecentPurchases.map((purchase) => (
+                                        <RecentPurchaseCard key={purchase.id} purchase={purchase} />
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* Actions rapides */}
+                        <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
+                            <h2 className="text-xl font-bold text-text-100 mb-6">Actions rapides</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <button
+                                    onClick={() => navigate('/favorites')}
+                                    className="p-4 bg-background-700 hover:bg-background-600 rounded-xl border border-background-600 hover:border-secondary-500/30 transition-all duration-300 group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-secondary-500/15 rounded-lg">
+                                            <Heart className="w-5 h-5 text-secondary-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-medium text-text-100 group-hover:text-secondary-400 transition-colors">
+                                                Mes favoris
+                                            </h3>
+                                            <p className="text-sm text-text-400">
+                                                Produits sauvegardés
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('/downloads')}
+                                    className="p-4 bg-background-700 hover:bg-background-600 rounded-xl border border-background-600 hover:border-success-500/30 transition-all duration-300 group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-success-500/15 rounded-lg">
+                                            <Download className="w-5 h-5 text-success-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-medium text-text-100 group-hover:text-success-400 transition-colors">
+                                                Téléchargements
+                                            </h3>
+                                            <p className="text-sm text-text-400">
+                                                Fichiers achetés
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('/my-reviews')}
+                                    className="p-4 bg-background-700 hover:bg-background-600 rounded-xl border border-background-600 hover:border-primary-500/30 transition-all duration-300 group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary-500/15 rounded-lg">
+                                            <MessageSquare className="w-5 h-5 text-primary-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-medium text-text-100 group-hover:text-primary-400 transition-colors">
+                                                Mes avis
+                                            </h3>
+                                            <p className="text-sm text-text-400">
+                                                Avis et évaluations
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => navigate('/invoices')}
+                                    className="p-4 bg-background-700 hover:bg-background-600 rounded-xl border border-background-600 hover:border-primary-500/30 transition-all duration-300 group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-primary-500/15 rounded-lg">
+                                            <FileText className="w-5 h-5 text-primary-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-medium text-text-100 group-hover:text-primary-400 transition-colors">
+                                                Factures
+                                            </h3>
+                                            <p className="text-sm text-text-400">
+                                                Historique des achats
+                                            </p>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </section>
+                    </div>
                 </main>
             </div>
         </div>
     );
 };
+
+export default BuyerDashboardPage;

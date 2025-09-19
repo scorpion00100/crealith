@@ -14,7 +14,8 @@ interface AuthState {
 const initialState: AuthState = {
   user: authService.getCurrentUser(),
   token: authService.getToken(),
-  isAuthenticated: authService.isAuthenticated(),
+  // Always start unauthenticated and validate on app load to avoid stale sessions
+  isAuthenticated: false,
   isLoading: false,
   error: null,
   activeMode: ((): 'BUYER' | 'SELLER' => {
@@ -141,6 +142,7 @@ const authSlice = createSlice({
       .addCase(fetchUserProfile.fulfilled, (state, action: PayloadAction<User>) => {
         state.isLoading = false;
         state.user = action.payload;
+        state.isAuthenticated = true;
         // Ensure activeMode remains valid
         if (state.activeMode === 'SELLER' && action.payload.role !== 'SELLER') {
           state.activeMode = 'BUYER';
@@ -150,6 +152,9 @@ const authSlice = createSlice({
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload as string;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
       });
   },
 });

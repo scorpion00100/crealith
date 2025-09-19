@@ -5,7 +5,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import swaggerUi from 'swagger-ui-express';
+// Swagger is lazily loaded based on env flags to speed up startup
 import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 import routes from './routes';
@@ -14,7 +14,7 @@ import healthRoutes from './routes/health.routes';
 import { errorHandler } from './middleware/error.middleware';
 import { correlationIdMiddleware, requestLoggingMiddleware, securityAuditMiddleware, dataChangeAuditMiddleware } from './middleware/audit.middleware';
 import { sanitizeInput } from './middleware/validation.middleware';
-import { swaggerSpec } from './config/swagger.config';
+// Avoid importing swagger config at startup
 import { logger } from './utils/logger';
 import passport from './config/passport';
 
@@ -22,6 +22,12 @@ dotenv.config();
 
 export const prisma = new PrismaClient();
 const app = express();
+
+// Fast-start flags
+const IS_TEST = process.env.NODE_ENV === 'test';
+const DISABLE_RATE_LIMIT = process.env.DISABLE_RATE_LIMIT === '1' || process.env.FAST_START === '1';
+const DISABLE_AUDIT = process.env.DISABLE_AUDIT === '1' || process.env.FAST_START === '1';
+const DISABLE_SWAGGER = process.env.DISABLE_SWAGGER === '1' || process.env.FAST_START === '1';
 
 // Middlewares de sécurité
 app.use(helmet({ 
@@ -45,13 +51,15 @@ app.use(cors({
 }));
 
 // Rate limiting
-app.use(process.env.NODE_ENV === 'test' ? ((req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => next()) : rateLimit({ 
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // limite par IP
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
+if (!DISABLE_RATE_LIMIT) {
+  app.use(IS_TEST ? ((req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => next()) : rateLimit({ 
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000, // limite par IP
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  }));
+}
 
 // Middlewares de base
 // Parser robuste pour JSON (gère Buffer, string, ou JSON standard)
@@ -85,11 +93,13 @@ app.use(cookieParser());
 // Passport (no sessions, stateless JWT)
 app.use(passport.initialize());
 
-// Middlewares d'audit et de logging
-app.use(correlationIdMiddleware);
-app.use(requestLoggingMiddleware);
-app.use(securityAuditMiddleware);
-app.use(dataChangeAuditMiddleware);
+// Middlewares d'audit et de logging (peuvent être désactivés pour FAST_START)
+if (!DISABLE_AUDIT) {
+  app.use(correlationIdMiddleware);
+  app.use(requestLoggingMiddleware);
+  app.use(securityAuditMiddleware);
+  app.use(dataChangeAuditMiddleware);
+}
 
 // Sanitisation des inputs
 app.use(sanitizeInput);
@@ -99,12 +109,29 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Documentation API
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Crealith API Documentation'
-}));
+// Documentation API (lazy + option to disable)
+if (!DISABLE_SWAGGER) {
+  // Lazy import to avoid startup cost
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  app.use('/api-docs', async (req, res, next) => {
+    try {
+      const swaggerUi = await import('swagger-ui-express');
+      const { swaggerSpec } = await import('./config/swagger.config');
+      // Replace the handler on first hit
+      const serve = swaggerUi.serve;
+      const setup = swaggerUi.setup(swaggerSpec, {
+        explorer: true,
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'Crealith API Documentation'
+      });
+      // Mount the real middleware chain
+      // @ts-expect-error serve expects a router but works as middleware
+      serve(req, res, () => setup(req, res, next));
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 // Routes principales
 app.use('/api', routes);

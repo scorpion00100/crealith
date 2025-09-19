@@ -23,6 +23,7 @@ const ProductDetailPage = lazy(() => import('@/pages/ProductDetailPage').then(mo
 const CartPage = lazy(() => import('@/pages/CartPage').then(module => ({ default: module.CartPage })));
 const CheckoutPage = lazy(() => import('@/pages/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage').then(module => ({ default: module.FavoritesPage })));
+const DownloadsPage = lazy(() => import('@/pages/DownloadsPage').then(module => ({ default: module.DownloadsPage })));
 
 // Lazy loading des pages d'authentification
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage').then(module => ({ default: module.LoginPage })));
@@ -31,14 +32,17 @@ const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage').
 const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage').then(module => ({ default: module.ResetPasswordPage })));
 const EmailConfirmationPage = lazy(() => import('@/pages/auth/EmailConfirmationPage').then(module => ({ default: module.EmailConfirmationPage })));
 const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage').then(module => ({ default: module.VerifyEmailPage })));
+const ResetSuccessPage = lazy(() => import('@/pages/auth/ResetSuccessPage').then(module => ({ default: module.ResetSuccessPage })));
 const GoogleCallbackPage = lazy(() => import('@/pages/auth/GoogleCallbackPage').then(module => ({ default: module.default })));
 const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage').then(module => ({ default: module.UnauthorizedPage })));
 
 // Lazy loading des pages de dashboard
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const SellerDashboardPage = lazy(() => import('@/pages/seller/SellerDashboardPage').then(module => ({ default: module.SellerDashboardPage })));
-const BuyerDashboardPage = lazy(() => import('@/pages/buyer/BuyerDashboardPage').then(module => ({ default: module.BuyerDashboardPage })));
+const BuyerDashboardPage = lazy(() => import('@/pages/buyer/BuyerDashboardPage').then(module => ({ default: module.default })));
 const OrdersPage = lazy(() => import('@/pages/OrdersPage').then(module => ({ default: module.OrdersPage })));
+const InvoicesPage = lazy(() => import('@/pages/InvoicesPage').then(module => ({ default: module.default })));
+const MyReviewsPage = lazy(() => import('@/pages/MyReviewsPage').then(module => ({ default: module.default })));
 
 // Lazy loading des pages statiques
 const AboutPage = lazy(() => import('@/pages/AboutPage').then(module => ({ default: module.AboutPage })));
@@ -56,22 +60,26 @@ const App: React.FC = () => {
               <Routes>
                 {/* Pages avec Layout général (Header + Footer) */}
                 <Route path="/" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de l'accueil..." />}>
-                      <ComponentErrorBoundary>
-                        <HomePage />
-                      </ComponentErrorBoundary>
-                    </Suspense>
-                  </Layout>
+                  <PublicRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de l'accueil..." />}>
+                        <ComponentErrorBoundary>
+                          <HomePage />
+                        </ComponentErrorBoundary>
+                      </Suspense>
+                    </Layout>
+                  </PublicRoute>
                 } />
                 <Route path="/catalog" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement du catalogue..." />}>
-                      <ComponentErrorBoundary>
-                        <CatalogPage />
-                      </ComponentErrorBoundary>
-                    </Suspense>
-                  </Layout>
+                  <PublicRoute allowAuthenticated={true}>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement du catalogue..." />}>
+                        <ComponentErrorBoundary>
+                          <CatalogPage />
+                        </ComponentErrorBoundary>
+                      </Suspense>
+                    </Layout>
+                  </PublicRoute>
                 } />
                 <Route path="/product/:id" element={
                   <Layout>
@@ -146,6 +154,15 @@ const App: React.FC = () => {
                     </Layout>
                   </PublicRoute>
                 } />
+                <Route path="/reset-success" element={
+                  <PublicRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                        <ResetSuccessPage />
+                      </Suspense>
+                    </Layout>
+                  </PublicRoute>
+                } />
                 <Route path="/email-confirmation" element={
                   <PublicRoute>
                     <Layout>
@@ -215,6 +232,24 @@ const App: React.FC = () => {
                     </Layout>
                   </ProtectedRoute>
                 } />
+                <Route path="/invoices" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement des factures..." />}>
+                        <InvoicesPage />
+                      </Suspense>
+                    </Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/my-reviews" element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de vos avis..." />}>
+                        <MyReviewsPage />
+                      </Suspense>
+                    </Layout>
+                  </ProtectedRoute>
+                } />
 
                 {/* Routes nécessitant une vérification d'email */}
                 <Route path="/cart" element={
@@ -240,6 +275,15 @@ const App: React.FC = () => {
                     <Layout>
                       <Suspense fallback={<LoadingSpinner text="Chargement des favoris..." />}>
                         <FavoritesPage />
+                      </Suspense>
+                    </Layout>
+                  </VerifiedEmailRoute>
+                } />
+                <Route path="/downloads" element={
+                  <VerifiedEmailRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement des téléchargements..." />}>
+                        <DownloadsPage />
                       </Suspense>
                     </Layout>
                   </VerifiedEmailRoute>
