@@ -60,8 +60,19 @@ export const orderController = {
   async createOrder(req: Request, res: Response) {
     try {
       const userId = req.user?.userId as string;
-      const { paymentMethod } = req.body as { paymentMethod: string };
+      const { paymentMethod, orderId, paymentIntentId } = req.body as { 
+        paymentMethod: string; 
+        orderId?: string; 
+        paymentIntentId?: string; 
+      };
 
+      // Si orderId et paymentIntentId sont fournis, c'est une confirmation de paiement
+      if (orderId && paymentIntentId) {
+        const order = await orderService.confirmOrder(orderId, paymentIntentId);
+        return res.json({ success: true, data: order });
+      }
+
+      // Sinon, créer une nouvelle commande
       const { order, paymentIntent } = await orderService.createOrder({ userId, items: [], paymentMethod });
 
       res.status(201).json({ success: true, data: { order, clientSecret: paymentIntent.client_secret } });

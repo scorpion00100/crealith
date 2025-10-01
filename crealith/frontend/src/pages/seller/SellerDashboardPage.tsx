@@ -14,6 +14,7 @@ import {
     Heart
 } from 'lucide-react';
 import { Sidebar } from '@/components/marketplace/Sidebar';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ProductCard } from '@/components/marketplace/ProductCard';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/cn';
@@ -39,32 +40,7 @@ const mockStats = {
     unreadMessages: 0
 };
 
-const mockRecentOrders = [
-    {
-        id: '1',
-        productName: 'Template PowerPoint Moderne',
-        customerName: 'Jean Dupont',
-        amount: 15.99,
-        date: '2025-01-10',
-        status: 'completed'
-    },
-    {
-        id: '2',
-        productName: 'Pack d\'icônes vectorielles',
-        customerName: 'Marie Martin',
-        amount: 8.50,
-        date: '2025-01-09',
-        status: 'pending'
-    },
-    {
-        id: '3',
-        productName: 'Mockup iPhone 15 Pro',
-        customerName: 'Pierre Durand',
-        amount: 12.00,
-        date: '2025-01-08',
-        status: 'completed'
-    }
-];
+const mockRecentOrders: any[] = [];
 
 const mockTopProducts = [
     {
@@ -123,7 +99,9 @@ const mockAnalyticsData = {
 
 export const SellerDashboardPage: React.FC = () => {
     const dispatch = useAppDispatch();
+    const navigate = useNavigate();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const location = useLocation();
     const [activeTab, setActiveTab] = useState<'overview' | 'products'>('overview');
     const { user, logout } = useAuth();
     // Produits (API)
@@ -132,7 +110,7 @@ export const SellerDashboardPage: React.FC = () => {
     const [productsError, setProductsError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const [pageSize] = useState(6);
-    const [sortBy, setSortBy] = useState<'createdAt' | 'sales' | 'price'>('createdAt');
+    const [sortBy, setSortBy] = useState<'createdAt' | 'downloadsCount' | 'price'>('createdAt');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
     const [total, setTotal] = useState(0);
 
@@ -155,8 +133,9 @@ export const SellerDashboardPage: React.FC = () => {
                     userId: user.id as any,
                     page,
                     pageSize,
-                    sortBy,
-                    sortDir,
+                    // Mapper les options de tri UI -> API backend
+                    sortBy: sortBy,
+                    sortDir: sortDir,
                 } as any);
                 setProducts(res.products || []);
                 setTotal(res.total || res.products?.length || 0);
@@ -172,12 +151,12 @@ export const SellerDashboardPage: React.FC = () => {
         }
     }, [user, activeTab, page, pageSize, sortBy, sortDir]);
 
-    // Lire l'ancre URL pour activer l'onglet produits (#products)
+    // Activer l'onglet Produits quand le hash est #products (initial + navigation intra-page)
     useEffect(() => {
-        if (window.location.hash === '#products') {
+        if (location.hash === '#products') {
             setActiveTab('products');
         }
-    }, []);
+    }, [location.hash]);
 
     const formatPrice = (price: number) => {
         return new Intl.NumberFormat('fr-FR', {
@@ -205,9 +184,9 @@ export const SellerDashboardPage: React.FC = () => {
             <div className="bg-background-800 rounded-2xl border border-background-700 p-6 hover:border-primary-500/30 transition-all duration-300">
                 <div className="flex items-center justify-between mb-4">
                     <div className={cn('p-3 rounded-xl', colorClasses[color])}>
-                        <Icon className="w-6 h-6" />
+                        <Icon className="w-5 h-5" />
                     </div>
-                    {change && (
+                    {change && typeof value === 'number' && value > 0 && (
                         <span className={cn(
                             'text-sm font-medium px-2 py-1 rounded-full',
                             trend === 'up' && 'text-success-400 bg-success-500/20',
@@ -231,7 +210,7 @@ export const SellerDashboardPage: React.FC = () => {
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-primary-500/20 rounded-lg flex items-center justify-center">
-                        <ShoppingBag className="w-5 h-5 text-primary-400" />
+                        <ShoppingBag className="w-4 h-4 text-primary-400" />
                     </div>
                     <div>
                         <h4 className="font-medium text-text-100">{order.productName}</h4>
@@ -406,11 +385,23 @@ export const SellerDashboardPage: React.FC = () => {
                                     <div className="flex items-center justify-between mb-6">
                                         <h2 className="text-xl font-bold text-text-100">Commandes récentes</h2>
                                     </div>
-                                    <div className="space-y-4">
-                                        {mockRecentOrders.map((order) => (
-                                            <OrderCard key={order.id} order={order} />
-                                        ))}
-                                    </div>
+                                    {mockRecentOrders.length === 0 ? (
+                                        <div className="text-center text-text-400 py-8">
+                                            <p className="mb-4">Aucune commande récente.</p>
+                                            <button
+                                                onClick={() => setActiveTab('products')}
+                                                className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                                            >
+                                                Voir mes produits
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {mockRecentOrders.map((order) => (
+                                                <OrderCard key={order.id} order={order} />
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -433,7 +424,7 @@ export const SellerDashboardPage: React.FC = () => {
                                     <button onClick={() => setActiveTab('products')} className="p-6 bg-background-800 border border-background-700 rounded-xl hover:border-primary-500/30 transition-all duration-300 text-left group">
                                         <div className="flex items-center gap-3 mb-3">
                                             <div className="p-3 bg-primary-500/20 rounded-xl group-hover:bg-primary-500/30 transition-colors">
-                                                <Plus className="w-6 h-6 text-primary-400" />
+                                                <Plus className="w-5 h-5 text-primary-400" />
                                             </div>
                                             <div>
                                                 <p className="font-medium text-text-100">Ajouter un produit</p>
@@ -442,19 +433,7 @@ export const SellerDashboardPage: React.FC = () => {
                                         </div>
                                     </button>
 
-                                    <button aria-disabled title="Bientôt disponible" className="p-6 bg-background-800 border border-background-700 rounded-xl transition-all duration-300 text-left opacity-70 cursor-not-allowed">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className="p-3 bg-secondary-500/20 rounded-xl">
-                                                <BarChart3 className="w-6 h-6 text-secondary-400" />
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-text-100">Analytics détaillées</p>
-                                                <p className="text-sm text-text-400">Voir les statistiques</p>
-                                            </div>
-                                        </div>
-                                    </button>
-
-                                    {/* Carte Messages supprimée (pas de messagerie au MVP) */}
+                                    {/* Carte Analytics et Messages retirées pour MVP */}
                                 </div>
                             </div>
                         </div>
@@ -466,23 +445,21 @@ export const SellerDashboardPage: React.FC = () => {
                             {/* Tri */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm text-text-400">Trier par:</span>
+                                    <span className="text-sm text-text-400">Trier:</span>
                                     <select
-                                        value={sortBy}
-                                        onChange={(e) => setSortBy(e.target.value as any)}
+                                        value={`${sortBy}:${sortDir}`}
+                                        onChange={(e) => {
+                                            const [by, dir] = e.target.value.split(':');
+                                            setSortBy((by as any) || 'createdAt');
+                                            setSortDir((dir as any) || 'desc');
+                                        }}
                                         className="px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
                                     >
-                                        <option value="createdAt">Date</option>
-                                        <option value="sales">Ventes</option>
-                                        <option value="price">Prix</option>
-                                    </select>
-                                    <select
-                                        value={sortDir}
-                                        onChange={(e) => setSortDir(e.target.value as any)}
-                                        className="px-3 py-2 bg-background-800 border border-background-700 rounded-lg text-text-100"
-                                    >
-                                        <option value="desc">Desc</option>
-                                        <option value="asc">Asc</option>
+                                        <option value="createdAt:desc">Date (récent)</option>
+                                        <option value="createdAt:asc">Date (ancien)</option>
+                                        <option value="downloadsCount:desc">Populaire</option>
+                                        <option value="price:asc">Prix (croissant)</option>
+                                        <option value="price:desc">Prix (décroissant)</option>
                                     </select>
                                 </div>
                                 <div className="text-sm text-text-400">{total} produits</div>
@@ -498,8 +475,18 @@ export const SellerDashboardPage: React.FC = () => {
                                 {productsError && (
                                     <div className="col-span-full text-error-400">{productsError}</div>
                                 )}
+                                {!productsLoading && !productsError && products.length === 0 && (
+                                    <div className="col-span-full text-center text-text-400 py-10">
+                                        Aucun produit pour le moment. Cliquez sur “Nouveau produit” pour commencer.
+                                    </div>
+                                )}
                                 {!productsLoading && !productsError && products.map((p) => (
-                                    <ProductCard key={p.id} product={p} />
+                                    <ProductCard
+                                        key={p.id}
+                                        product={p}
+                                        variant="default"
+                                        onQuickView={(productId: string) => navigate(`/seller/product/${productId}`)}
+                                    />
                                 ))}
                             </div>
 

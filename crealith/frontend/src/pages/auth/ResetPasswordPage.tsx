@@ -51,8 +51,8 @@ export const ResetPasswordPage: React.FC = () => {
             newErrors.password = 'Le mot de passe est requis';
         } else if (formData.password.length < 8) {
             newErrors.password = 'Le mot de passe doit contenir au moins 8 caractères';
-        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
-            newErrors.password = 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre';
+        } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(formData.password)) {
+            newErrors.password = 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial';
         }
 
         if (!formData.confirmPassword) {
@@ -62,13 +62,31 @@ export const ResetPasswordPage: React.FC = () => {
         }
 
         setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
+        const isValid = Object.keys(newErrors).length === 0;
+        return isValid;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!validateForm() || !token) {
+        if (!token) {
+            dispatch(addNotification({
+                type: 'error',
+                message: 'Token de réinitialisation manquant',
+                duration: 4000,
+            }));
+            return;
+        }
+
+        // Validate form and check for errors
+        const isValid = validateForm();
+
+        if (!isValid) {
+            dispatch(addNotification({
+                type: 'error',
+                message: 'Veuillez corriger les erreurs dans le formulaire',
+                duration: 4000,
+            }));
             return;
         }
 
@@ -81,17 +99,17 @@ export const ResetPasswordPage: React.FC = () => {
                 false
             );
 
-            if ((data as any).success) {
+            if (data.success) {
                 dispatch(addNotification({
                     type: 'success',
                     message: 'Mot de passe réinitialisé avec succès ! Vous pouvez maintenant vous connecter.',
                     duration: 5000,
                 }));
 
-                // Rediriger vers une petite page de confirmation avant login
-                navigate('/reset-success', { replace: true });
+                // Rediriger vers la page de login
+                navigate('/login', { replace: true });
             } else {
-                throw new Error((data as any).message || 'Erreur lors de la réinitialisation');
+                throw new Error(data.message || 'Erreur lors de la réinitialisation');
             }
         } catch (error: any) {
             dispatch(addNotification({
@@ -151,6 +169,9 @@ export const ResetPasswordPage: React.FC = () => {
                                 </li>
                                 <li className={/(?=.*\d)/.test(formData.password) ? 'valid' : ''}>
                                     Un chiffre
+                                </li>
+                                <li className={/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/.test(formData.password) ? 'valid' : ''}>
+                                    Un caractère spécial
                                 </li>
                             </ul>
                         </div>

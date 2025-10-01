@@ -70,6 +70,16 @@ export class AnalyticsServiceClass {
     const response = await apiService.get<{ success: boolean; data: AdminAnalytics }>(`/analytics/admin?period=${period}`);
     return response.data;
   }
+
+  // Recently viewed endpoints (authenticated)
+  async addRecentlyViewed(productId: string): Promise<void> {
+    await apiService.post('/analytics/recently-viewed', { productId });
+  }
+
+  async getRecentlyViewed(limit = 12): Promise<Array<{ id: string }>> {
+    const response = await apiService.get<{ success: boolean; data: Array<{ id: string }> }>(`/analytics/recently-viewed?limit=${limit}`);
+    return response.data;
+  }
 }
 
 export const analyticsService = new AnalyticsServiceClass();

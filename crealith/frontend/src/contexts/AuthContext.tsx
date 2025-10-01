@@ -249,16 +249,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Gérer les redirections automatiques
     useEffect(() => {
+        // Ne rien faire pendant le chargement initial (évite redirects non voulus)
+        if (isLoading) {
+            return;
+        }
+
         // Si l'utilisateur est connecté et sur une page d'auth, rediriger
         if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register')) {
             redirectAfterLogin();
         }
 
         // Si l'utilisateur n'est pas connecté et essaie d'accéder à une page protégée
+        // NOTE: Les RouteGuards gèrent déjà cela, ce useEffect est juste un fallback
         if (!isAuthenticated && isProtectedRoute(location.pathname)) {
             redirectToLogin();
         }
-    }, [isAuthenticated, location.pathname]);
+    }, [isAuthenticated, location.pathname, isLoading]);
 
     // Déterminer si une route est protégée
     const isProtectedRoute = (pathname: string): boolean => {

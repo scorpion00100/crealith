@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -18,7 +19,24 @@ import { sanitizeInput } from './middleware/validation.middleware';
 import { logger } from './utils/logger';
 import passport from './config/passport';
 
-dotenv.config();
+// Load env from multiple locations to support monorepo root and backend folder
+(() => {
+  const candidates = [
+    path.resolve(process.cwd(), '.env.local'),
+    path.resolve(process.cwd(), '.env'),
+    path.resolve(process.cwd(), '..', '..', '.env.local'),
+    path.resolve(process.cwd(), '..', '..', '.env'),
+  ];
+  for (const file of candidates) {
+    try {
+      if (fs.existsSync(file)) {
+        dotenv.config({ path: file, override: false });
+      }
+    } catch {
+      // ignore
+    }
+  }
+})();
 
 export const prisma = new PrismaClient();
 const app = express();

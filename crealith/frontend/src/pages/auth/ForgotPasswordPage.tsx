@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { addNotification } from '@/store/slices/uiSlice';
 import { apiService } from '@/services/api';
 import { useAppDispatch } from '@/store';
@@ -8,10 +8,25 @@ import '../../styles/auth/forgot-password.css';
 export const ForgotPasswordPage: React.FC = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
 
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isEmailSent, setIsEmailSent] = useState(false);
+
+    React.useEffect(() => {
+        // Prefill from URL or sessionStorage on mount
+        const fromUrl = searchParams.get('email') || '';
+        const fromSession = sessionStorage.getItem('fp_email') || '';
+        const value = fromUrl || fromSession;
+        if (value) setEmail(value);
+    }, [searchParams]);
+
+    React.useEffect(() => {
+        // Persist as user types
+        if (email) sessionStorage.setItem('fp_email', email);
+        else sessionStorage.removeItem('fp_email');
+    }, [email]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,6 +35,17 @@ export const ForgotPasswordPage: React.FC = () => {
             dispatch(addNotification({
                 type: 'error',
                 message: 'Veuillez saisir votre adresse email',
+                duration: 3000,
+            }));
+            return;
+        }
+
+        // Validation de format d'email pour éviter le blocage natif du navigateur
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            dispatch(addNotification({
+                type: 'error',
+                message: 'Adresse email invalide',
                 duration: 3000,
             }));
             return;
@@ -66,7 +92,6 @@ export const ForgotPasswordPage: React.FC = () => {
                 <div className="forgot-password-container">
                     <div className="forgot-password-header">
                         <div className="forgot-password-logo">
-                            <div className="logo-icon">🔒</div>
                             <div className="logo-text">Crealith</div>
                         </div>
                         <h1 className="forgot-password-title">Email envoyé</h1>
@@ -126,7 +151,6 @@ export const ForgotPasswordPage: React.FC = () => {
             <div className="forgot-password-container">
                 <div className="forgot-password-header">
                     <div className="forgot-password-logo">
-                        <div className="logo-icon">🔒</div>
                         <div className="logo-text">Crealith</div>
                     </div>
                     <h1 className="forgot-password-title">Mot de passe oublié</h1>
@@ -143,7 +167,6 @@ export const ForgotPasswordPage: React.FC = () => {
                             id="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            required
                             placeholder="votre@email.com"
                             className="form-input"
                         />

@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { StripeService } from '../services/stripe.service';
+import { redisService } from '../services/redis.service';
+import { SecureLogger } from '../utils/secure-logger';
 
 const router = Router();
 
@@ -11,6 +13,21 @@ router.post('/stripe', async (req: Request, res: Response) => {
 
     // Vérifier la signature du webhook
     const event = StripeService.verifyWebhookSignature(payload, sig);
+
+    // ✨ IDEMPOTENCE : Vérifier si l'événement a déjà été traité
+    const webhookKey = `webhook:stripe:${event.id}`;
+    const alreadyProcessed = await redisService.cacheExists(webhookKey);
+    
+    if (alreadyProcessed) {
+      SecureLogger.info(`Webhook already processed: ${event.id}`, { eventType: event.type });
+      return res.json({ received: true, alreadyProcessed: true });
+    }
+
+    // Logger l'événement webhook reçu
+    SecureLogger.info(`Processing webhook: ${event.id}`, {
+      eventType: event.type,
+      eventId: event.id
+    });
 
     // Traiter l'événement selon son type
     switch (event.type) {
@@ -45,12 +62,24 @@ router.post('/stripe', async (req: Request, res: Response) => {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        SecureLogger.warn(`Unhandled event type: ${event.type}`, { eventId: event.id });
     }
 
+    // ✨ Marquer l'événement comme traité (TTL 7 jours pour éviter rejeu)
+    await redisService.cacheSet(webhookKey, {
+      eventId: event.id,
+      eventType: event.type,
+      processedAt: new Date().toISOString()
+    }, 7 * 24 * 60 * 60);
+
+    SecureLogger.info(`Webhook processed successfully: ${event.id}`, { eventType: event.type });
+    
     res.json({ received: true });
-  } catch (error) {
-    console.error('Webhook error:', error);
+  } catch (error: any) {
+    SecureLogger.error('Webhook error', error, {
+      signature: req.headers['stripe-signature'],
+      errorMessage: error.message
+    });
     res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 });

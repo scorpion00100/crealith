@@ -117,7 +117,9 @@ export const LoginPage: React.FC = () => {
       <div className="auth-container">
         <div className="auth-header">
           <div className="auth-logo">
-            <div className="auth-logo-icon">🎨</div>
+            <div className="auth-logo-icon">
+              <span className="auth-logo-letter">C</span>
+            </div>
             <div className="auth-logo-text">Crealith</div>
           </div>
           <h1 className="auth-title">Connexion</h1>

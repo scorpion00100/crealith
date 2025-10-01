@@ -136,17 +136,15 @@ export class OrderService {
   }
 
   async clearCart(userId: string): Promise<void> {
-    await prisma.cartItem.deleteMany({ where: { userId } });
+    // Utiliser le service cart pour vider le panier Redis
+    const cartService = new (await import('./cart.service')).CartService();
+    await cartService.clear(userId);
   }
 
   async createOrder(data: CreateOrderData): Promise<{ order: Order; paymentIntent: any }> {
-    // Récupérer les items du panier
-    const cartItems = await prisma.cartItem.findMany({
-      where: { userId: data.userId },
-      include: {
-        product: true,
-      },
-    });
+    // Récupérer les items du panier depuis Redis (comme le service cart)
+    const cartService = new (await import('./cart.service')).CartService();
+    const cartItems = await cartService.getCart(data.userId);
 
     if (cartItems.length === 0) {
       throw createError.badRequest('Cart is empty');
@@ -157,12 +155,12 @@ export class OrderService {
     const orderItems: Array<{ productId: string; quantity: number; price: number }> = [];
 
     for (const cartItem of cartItems) {
-      const price = parseFloat(cartItem.product.price.toString());
+      const price = parseFloat(cartItem.product.price);
       const itemTotal = price * cartItem.quantity;
       totalAmount += itemTotal;
 
       orderItems.push({
-        productId: cartItem.productId,
+        productId: cartItem.product.id,
         quantity: cartItem.quantity,
         price,
       });

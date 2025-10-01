@@ -264,11 +264,9 @@ export const HomePage: React.FC = () => {
             {featuredProducts.map((product, index) => (
               <div key={product.id} className="animate-in-up" style={{ animationDelay: `${index * 100}ms` }}>
                 <ProductCard
-                  product={product}
-                  variant="buyer"
+                  product={product as any}
+                  variant="minimal"
                   onView={handleViewProduct}
-                  onAddToCart={handleAddToCart}
-                  onAddToFavorites={handleToggleFavorite}
                 />
               </div>
             ))}

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.middleware';
 import { cartService } from '../services/cart.service';
+import { validate, addToCartSchema, updateCartItemSchema, idParamSchema } from '../utils/validation';
 
 const router = Router();
 
@@ -13,11 +14,10 @@ router.get('/', async (req: any, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post('/', async (req: any, res, next) => {
+router.post('/', validate(addToCartSchema), async (req: any, res, next) => {
   try {
-    const { productId, quantity } = req.body || {};
-    if (!productId) return res.status(400).json({ success: false, message: 'productId is required' });
-    const item = await cartService.addToCart(req.user.userId, productId, Number(quantity) || 1);
+    const { productId, quantity } = req.body;
+    const item = await cartService.addToCart(req.user.userId, productId, quantity);
     res.json({ success: true, data: item });
   } catch (e: any) {
     if (e.statusCode === 404) return res.status(404).json({ success: false, message: e.message });
@@ -25,11 +25,11 @@ router.post('/', async (req: any, res, next) => {
   }
 });
 
-router.put('/:id', async (req: any, res, next) => {
+router.put('/:id', validate(idParamSchema, 'params'), validate(updateCartItemSchema), async (req: any, res, next) => {
   try {
     const { id } = req.params;
-    const { quantity } = req.body || {};
-    const item = await cartService.updateItem(req.user.userId, id, Number(quantity) || 1);
+    const { quantity } = req.body;
+    const item = await cartService.updateItem(req.user.userId, id, quantity);
     res.json({ success: true, data: item });
   } catch (e: any) {
     if (e.removed && e.statusCode === 204) return res.status(200).json({ success: true, data: null });
@@ -38,7 +38,7 @@ router.put('/:id', async (req: any, res, next) => {
   }
 });
 
-router.delete('/:id', async (req: any, res, next) => {
+router.delete('/:id', validate(idParamSchema, 'params'), async (req: any, res, next) => {
   try {
     const { id } = req.params;
     await cartService.removeItem(req.user.userId, id);

@@ -39,6 +39,25 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
 
 export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const user = req.user as any;
+    
+    // Si userId est fourni dans la query, vérifier les permissions
+    let userIdFilter: string | undefined = undefined;
+    if (req.query.userId) {
+      const requestedUserId = req.query.userId as string;
+      
+      // Seul l'utilisateur lui-même peut filtrer par son userId (sauf ADMIN)
+      if (user && (user.role === 'ADMIN' || user.userId === requestedUserId)) {
+        userIdFilter = requestedUserId;
+      } else if (!user) {
+        // Utilisateur non authentifié ne peut pas filtrer par userId
+        userIdFilter = undefined;
+      } else {
+        // Utilisateur authentifié essaie de voir les produits d'un autre
+        throw createError.forbidden('Vous ne pouvez voir que vos propres produits');
+      }
+    }
+    
     const filters = {
       categoryId: req.query.categoryId as string,
       search: req.query.search as string,
@@ -50,6 +69,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       limit: req.query.limit ? parseInt(req.query.limit as string) : 12,
       sortBy: req.query.sortBy as 'price' | 'createdAt' | 'downloadsCount',
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
+      userId: userIdFilter, // ✅ Filtre par userId sécurisé
     };
 
     const result = await productService.getProducts(filters);

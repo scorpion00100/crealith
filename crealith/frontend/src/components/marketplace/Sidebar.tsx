@@ -43,12 +43,7 @@ const buyerNavItems: NavItem[] = [
         icon: Home,
         path: '/buyer-dashboard',
     },
-    {
-        id: 'catalog',
-        label: 'Catalogue',
-        icon: Package,
-        path: '/catalog',
-    },
+    // Catalogue retiré côté vendeur pour éviter la confusion de rôles
     {
         id: 'orders',
         label: 'Mes commandes',
@@ -75,6 +70,7 @@ const buyerNavItems: NavItem[] = [
     }
 ];
 
+// Navigation vendeur: Tableau de bord, Mes produits, Profil, Paramètres
 const sellerNavItems: NavItem[] = [
     {
         id: 'dashboard',
@@ -113,7 +109,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const navItems = variant === 'buyer' ? buyerNavItems : sellerNavItems;
 
     const isActivePath = (path: string) => {
-        return location.pathname === path || location.pathname.startsWith(path + '/');
+        // Supporte les liens avec hash (ex: "/seller-dashboard#products").
+        // Si l'URL courante a un hash, seul l'item avec ce hash est actif; l'item sans hash n'est pas actif.
+        const [basePath, itemHash] = path.split('#');
+        const currentHash = location.hash || '';
+        const baseMatch = location.pathname === basePath || location.pathname.startsWith(basePath + '/');
+        if (!baseMatch) return false;
+        if (itemHash) {
+            return currentHash === `#${itemHash}`;
+        }
+        // Item sans hash actif uniquement si l'URL n'a pas de hash
+        return currentHash === '';
     };
 
     const NavItemComponent: React.FC<{ item: NavItem; level?: number }> = ({

@@ -1,9 +1,29 @@
 import { Router } from 'express';
 import multer from 'multer';
 import * as productController from '../controllers/product.controller';
-import { requireAuth, requireSeller, requireAdmin } from '../middleware/auth.middleware';
+import { requireAuth, requireSeller, requireAdmin, requireOwnership, optionalAuth } from '../middleware/auth.middleware';
+import { validate, createProductSchema, updateProductSchema, productQuerySchema, idParamSchema } from '../utils/validation';
+import { createError } from '../utils/errors';
 
 const router = Router();
+
+// Types MIME autorisés pour les uploads
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'application/zip',
+  'application/x-zip-compressed',
+  'video/mp4',
+  'video/quicktime',
+  'text/plain',
+  'application/json',
+  'application/javascript',
+  'text/html',
+  'text/css'
+];
 
 // Configuration multer pour l'upload de fichiers
 const upload = multer({
@@ -12,14 +32,18 @@ const upload = multer({
     fileSize: 100 * 1024 * 1024, // 100MB max
   },
   fileFilter: (req, file, cb) => {
-    // Accepter tous les types de fichiers pour les produits numériques
-    cb(null, true);
+    // Vérifier le type MIME
+    if (ALLOWED_FILE_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Type de fichier non autorisé: ${file.mimetype}. Types acceptés: images, PDF, ZIP, vidéos, code source`));
+    }
   },
 });
 
-// Routes publiques
-router.get('/', productController.getProducts);
-router.get('/:id', productController.getProductById);
+// Routes publiques (avec authentification optionnelle pour filtrage userId)
+router.get('/', optionalAuth, validate(productQuerySchema, 'query'), productController.getProducts);
+router.get('/:id', validate(idParamSchema, 'params'), productController.getProductById);
 
 // Routes protégées
 router.use(requireAuth);
@@ -28,14 +52,14 @@ router.use(requireAuth);
 router.post('/', requireSeller, upload.fields([
   { name: 'file', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
-]), productController.createProduct);
+]), validate(createProductSchema), productController.createProduct);
 
-router.put('/:id', requireSeller, upload.fields([
+router.put('/:id', requireSeller, validate(idParamSchema, 'params'), requireOwnership('product'), upload.fields([
   { name: 'file', maxCount: 1 },
   { name: 'thumbnail', maxCount: 1 }
-]), productController.updateProduct);
+]), validate(updateProductSchema), productController.updateProduct);
 
-router.delete('/:id', requireSeller, productController.deleteProduct);
+router.delete('/:id', requireSeller, validate(idParamSchema, 'params'), requireOwnership('product'), productController.deleteProduct);
 router.get('/user/products', requireSeller, productController.getUserProducts);
 
 // Route de téléchargement

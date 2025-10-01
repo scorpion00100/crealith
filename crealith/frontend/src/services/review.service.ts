@@ -35,6 +35,10 @@ class ReviewService {
     const res = await apiService.get<{ success: boolean; data: { averageRating: number; totalReviews: number } }>(`/reviews/product/${productId}/stats`);
     return res.data;
   }
+
+  async createReview(productId: string, rating: number, comment?: string): Promise<void> {
+    await apiService.post('/reviews', { productId, rating, comment });
+  }
 }
 
 export const reviewService = new ReviewService();

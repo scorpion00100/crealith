@@ -1,6 +1,7 @@
 import prisma from '../prisma';
 import { createError } from '../utils/errors';
 import { Product, Prisma } from '@prisma/client';
+import { redisService } from './redis.service';
 
 // TODO: Implémenter l'upload ImageKit
 const uploadToImageKit = async (file: Express.Multer.File, folder: string) => {
@@ -89,6 +90,9 @@ export class ProductService {
         },
       });
 
+      // Invalider le cache des produits
+      await redisService.cacheDelPattern('products:*');
+
       return product;
     } catch (error) {
       throw createError.internal('Failed to create product');
@@ -106,14 +110,30 @@ export class ProductService {
     limit?: number;
     sortBy?: 'price' | 'createdAt' | 'downloadsCount';
     sortOrder?: 'asc' | 'desc';
+    userId?: string;
   }): Promise<{ products: Product[]; total: number; page: number; totalPages: number }> {
     const page = filters.page || 1;
     const limit = filters.limit || 12;
     const skip = (page - 1) * limit;
 
+    // Générer une clé de cache unique basée sur les filtres
+    // Cache seulement pour les produits featured (page d'accueil) pour optimiser
+    const cacheKey = filters.isFeatured && !filters.search && page === 1
+      ? `products:featured:${JSON.stringify({ categoryId: filters.categoryId, limit })}`
+      : null;
+
+    // Vérifier le cache si applicable
+    if (cacheKey) {
+      const cached = await redisService.cacheGet<{ products: Product[]; total: number; page: number; totalPages: number }>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+    }
+
     const where: Prisma.ProductWhereInput = {
       isActive: filters.isActive !== undefined ? filters.isActive : true,
       ...(filters.categoryId && { categoryId: filters.categoryId }),
+      ...(filters.userId && { userId: filters.userId }),
       ...(filters.isFeatured && { isFeatured: true }),
       ...(filters.search && {
         OR: [
@@ -128,7 +148,7 @@ export class ProductService {
 
     const orderBy: Prisma.ProductOrderByWithRelationInput = {};
     if (filters.sortBy) {
-      orderBy[filters.sortBy] = filters.sortOrder || 'desc';
+      orderBy[filters.sortBy] = (filters.sortOrder || 'desc') as any;
     } else {
       orderBy.createdAt = 'desc';
     }
@@ -165,12 +185,19 @@ export class ProductService {
       prisma.product.count({ where }),
     ]);
 
-    return {
+    const result = {
       products,
       total,
       page,
       totalPages: Math.ceil(total / limit),
     };
+
+    // Mettre en cache si applicable (TTL 5 minutes pour les produits featured)
+    if (cacheKey) {
+      await redisService.cacheSet(cacheKey, result, 5 * 60);
+    }
+
+    return result;
   }
 
   async getProductById(id: string): Promise<Product | null> {
@@ -249,7 +276,7 @@ export class ProductService {
       updateData.thumbnailUrl = thumbnailUpload.url;
     }
 
-    return prisma.product.update({
+    const updated = await prisma.product.update({
       where: { id },
       data: updateData,
       include: {
@@ -270,6 +297,11 @@ export class ProductService {
         },
       },
     });
+
+    // Invalider le cache des produits
+    await redisService.cacheDelPattern('products:*');
+
+    return updated;
   }
 
   async deleteProduct(id: string, userId: string): Promise<void> {
@@ -288,6 +320,9 @@ export class ProductService {
     await prisma.product.delete({
       where: { id },
     });
+
+    // Invalider le cache des produits
+    await redisService.cacheDelPattern('products:*');
   }
 
   async getProductsByUser(userId: string): Promise<Product[]> {

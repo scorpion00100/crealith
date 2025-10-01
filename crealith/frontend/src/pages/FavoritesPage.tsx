@@ -86,10 +86,10 @@ export const FavoritesPage: React.FC = () => {
     }
 
     return (
-        <div className="favorites-page">
-            <div className="container">
+        <div className="favorites-page min-h-screen bg-gray-900">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="favorites-header">
-                    <button className="btn btn-outline" onClick={handleContinueShopping}>
+                    <button className="btn btn-primary btn-large" onClick={handleContinueShopping}>
                         <ArrowLeft size={20} />
                         Continuer les achats
                     </button>
@@ -112,26 +112,17 @@ export const FavoritesPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="favorites-content">
-                        <div className="favorites-grid">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                             {favorites.map((product: Product) => (
                                 <ProductCard
                                     key={product.id}
                                     product={product}
-                                    onAddToCart={handleAddToCart}
-                                    onAddToFavorites={handleToggleFavorite}
+                                    variant="minimal"
+                                    isFavorite={true}
                                     onView={(id) => navigate(`/product/${id}`)}
+                                    onAddToFavorites={handleToggleFavorite}
                                 />
                             ))}
-                        </div>
-
-                        <div className="favorites-actions">
-                            <button
-                                className="btn btn-primary btn-large"
-                                onClick={() => navigate('/cart')}
-                            >
-                                <ShoppingCart size={20} />
-                                Voir le panier
-                            </button>
                         </div>
                     </div>
                 )}

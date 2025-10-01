@@ -74,8 +74,13 @@ export const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({
     allowedRoles,
     fallbackPath
 }) => {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user, isLoading } = useAuth();
     const location = useLocation();
+
+    // Attendre le chargement avant de rediriger (évite redirects pendant auth check)
+    if (isLoading) {
+        return null; // ou <LoadingSpinner /> si vous préférez
+    }
 
     // Vérifier l'authentification
     if (!isAuthenticated) {

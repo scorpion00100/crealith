@@ -3,7 +3,7 @@ import { SecureLogger } from '../utils/secure-logger';
 import { RedisSecurityValidator, SecureRedisConfig } from '../utils/redis-security';
 
 class RedisService {
-  private redis: Redis;
+  public readonly redis: Redis;
   private isConnected = false;
   private config: SecureRedisConfig;
 
@@ -94,7 +94,97 @@ class RedisService {
     }
   }
 
-  // Gestion des refresh tokens
+  // ==================== Méthodes de cache génériques ====================
+  
+  /**
+   * Stocker des données dans le cache avec TTL
+   */
+  async cacheSet(key: string, value: any, ttlSeconds?: number): Promise<void> {
+    try {
+      const serialized = JSON.stringify(value);
+      if (ttlSeconds) {
+        await this.redis.setex(key, ttlSeconds, serialized);
+      } else {
+        await this.redis.set(key, serialized);
+      }
+      SecureLogger.debug(`Cache set: ${key}`, { ttl: ttlSeconds });
+    } catch (error) {
+      SecureLogger.error(`Failed to set cache for key: ${key}`, error);
+      // Ne pas lever d'erreur pour ne pas bloquer l'application
+    }
+  }
+
+  /**
+   * Récupérer des données du cache
+   */
+  async cacheGet<T>(key: string): Promise<T | null> {
+    try {
+      const data = await this.redis.get(key);
+      if (!data) return null;
+      
+      const parsed = JSON.parse(data);
+      SecureLogger.debug(`Cache hit: ${key}`);
+      return parsed as T;
+    } catch (error) {
+      SecureLogger.error(`Failed to get cache for key: ${key}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Supprimer une clé du cache
+   */
+  async cacheDel(key: string): Promise<void> {
+    try {
+      await this.redis.del(key);
+      SecureLogger.debug(`Cache deleted: ${key}`);
+    } catch (error) {
+      SecureLogger.error(`Failed to delete cache for key: ${key}`, error);
+    }
+  }
+
+  /**
+   * Supprimer plusieurs clés correspondant à un pattern
+   */
+  async cacheDelPattern(pattern: string): Promise<void> {
+    try {
+      const keys = await this.redis.keys(pattern);
+      if (keys.length > 0) {
+        await this.redis.del(...keys);
+        SecureLogger.debug(`Cache pattern deleted: ${pattern}`, { count: keys.length });
+      }
+    } catch (error) {
+      SecureLogger.error(`Failed to delete cache pattern: ${pattern}`, error);
+    }
+  }
+
+  /**
+   * Vérifier si une clé existe dans le cache
+   */
+  async cacheExists(key: string): Promise<boolean> {
+    try {
+      const exists = await this.redis.exists(key);
+      return exists === 1;
+    } catch (error) {
+      SecureLogger.error(`Failed to check cache existence for key: ${key}`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Définir l'expiration d'une clé existante
+   */
+  async cacheExpire(key: string, ttlSeconds: number): Promise<void> {
+    try {
+      await this.redis.expire(key, ttlSeconds);
+      SecureLogger.debug(`Cache expiration set: ${key}`, { ttl: ttlSeconds });
+    } catch (error) {
+      SecureLogger.error(`Failed to set cache expiration for key: ${key}`, error);
+    }
+  }
+
+  // ==================== Gestion des refresh tokens ====================
+  
   async storeRefreshToken(token: string, userId: string, expiresIn: number = 7 * 24 * 60 * 60): Promise<void> {
     try {
       // Validation des paramètres

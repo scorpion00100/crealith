@@ -159,4 +159,132 @@ describe('AuthService', () => {
       await expect(authService.login(loginData)).rejects.toThrow('Invalid credentials');
     });
   });
+
+  describe('resetPassword', () => {
+    it('should reset password successfully and invalidate old password', async () => {
+      const resetToken = 'valid-reset-token';
+      const newPassword = 'NewSecurePassword123!';
+      const userEmail = 'test@example.com';
+      
+      const mockUser = {
+        id: 'user123',
+        email: userEmail,
+        passwordHash: 'oldHashedPassword',
+        firstName: 'John',
+        lastName: 'Doe',
+        isActive: true
+      };
+
+      const mockResetTokenData = {
+        email: userEmail,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes from now
+      };
+
+      // Mock Redis service
+      const mockRedisService = {
+        getResetToken: jest.fn().mockResolvedValue(mockResetTokenData),
+        revokeResetToken: jest.fn().mockResolvedValue(true),
+        revokeAllUserTokens: jest.fn().mockResolvedValue(3) // 3 tokens revoked
+      };
+
+      // Mock prisma.user.findUnique
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(mockUser as any);
+
+      // Mock hashPassword
+      const { hashPassword } = require('../../utils/bcrypt');
+      const newHashedPassword = 'newHashedPassword123';
+      hashPassword.mockResolvedValue(newHashedPassword);
+
+      // Mock prisma.user.update
+      const updatedUser = { ...mockUser, passwordHash: newHashedPassword };
+      jest.spyOn(prisma.user, 'update').mockResolvedValue(updatedUser as any);
+
+      // Mock Redis service methods
+      jest.doMock('../../services/redis.service', () => ({
+        redisService: mockRedisService
+      }));
+
+      const result = await authService.resetPassword(resetToken, newPassword);
+
+      // Verify the password was hashed and stored
+      expect(hashPassword).toHaveBeenCalledWith(newPassword);
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: mockUser.id },
+        data: { passwordHash: newHashedPassword }
+      });
+
+      // Verify the reset token was revoked
+      expect(mockRedisService.revokeResetToken).toHaveBeenCalledWith(resetToken);
+
+      // Verify all user sessions were invalidated
+      expect(mockRedisService.revokeAllUserTokens).toHaveBeenCalledWith(mockUser.id);
+
+      expect(result.message).toBe('Password reset successfully. Please login with your new password.');
+    });
+
+    it('should throw error for invalid reset token', async () => {
+      const invalidToken = 'invalid-token';
+      const newPassword = 'NewSecurePassword123!';
+
+      // Mock Redis service to return null (invalid token)
+      const mockRedisService = {
+        getResetToken: jest.fn().mockResolvedValue(null)
+      };
+
+      jest.doMock('../../services/redis.service', () => ({
+        redisService: mockRedisService
+      }));
+
+      await expect(authService.resetPassword(invalidToken, newPassword))
+        .rejects.toThrow('Invalid or expired reset token');
+    });
+
+    it('should throw error for expired reset token', async () => {
+      const expiredToken = 'expired-token';
+      const newPassword = 'NewSecurePassword123!';
+      
+      const mockResetTokenData = {
+        email: 'test@example.com',
+        expiresAt: new Date(Date.now() - 60 * 1000) // 1 minute ago (expired)
+      };
+
+      // Mock Redis service
+      const mockRedisService = {
+        getResetToken: jest.fn().mockResolvedValue(mockResetTokenData)
+      };
+
+      jest.doMock('../../services/redis.service', () => ({
+        redisService: mockRedisService
+      }));
+
+      await expect(authService.resetPassword(expiredToken, newPassword))
+        .rejects.toThrow('Reset token has expired');
+    });
+
+    it('should throw error if user not found', async () => {
+      const resetToken = 'valid-reset-token';
+      const newPassword = 'NewSecurePassword123!';
+      const userEmail = 'nonexistent@example.com';
+      
+      const mockResetTokenData = {
+        email: userEmail,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes from now
+      };
+
+      // Mock Redis service
+      const mockRedisService = {
+        getResetToken: jest.fn().mockResolvedValue(mockResetTokenData)
+      };
+
+      // Mock prisma.user.findUnique to return null (user not found)
+      jest.spyOn(prisma.user, 'findUnique').mockResolvedValue(null);
+
+      jest.doMock('../../services/redis.service', () => ({
+        redisService: mockRedisService
+      }));
+
+      await expect(authService.resetPassword(resetToken, newPassword))
+        .rejects.toThrow('User not found');
+    });
+  });
 });

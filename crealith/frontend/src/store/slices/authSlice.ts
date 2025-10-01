@@ -12,18 +12,13 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
-  user: authService.getCurrentUser(),
-  token: authService.getToken(),
+  user: null,
+  token: null,
   // Always start unauthenticated and validate on app load to avoid stale sessions
   isAuthenticated: false,
   isLoading: false,
   error: null,
-  activeMode: ((): 'BUYER' | 'SELLER' => {
-    const stored = localStorage.getItem('crealith_active_mode');
-    if (stored === 'BUYER' || stored === 'SELLER') return stored;
-    const user = authService.getCurrentUser();
-    return user?.role === 'SELLER' ? 'SELLER' : 'BUYER';
-  })(),
+  activeMode: 'BUYER',
 };
 
 export const loginUser = createAsyncThunk(
@@ -58,6 +53,28 @@ export const fetchUserProfile = createAsyncThunk(
       return user;
     } catch (error: any) {
       return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const initializeAuth = createAsyncThunk(
+  'auth/initialize',
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = authService.getToken();
+      const user = authService.getCurrentUser();
+      
+      if (!token || !user) {
+        return { user: null, token: null, isAuthenticated: false };
+      }
+      
+      // Vérifier si le token est valide en appelant le profil
+      const profile = await authService.getProfile();
+      return { user: profile, token, isAuthenticated: true };
+    } catch (error: any) {
+      // Si l'authentification échoue, nettoyer le localStorage
+      authService.logout();
+      return { user: null, token: null, isAuthenticated: false };
     }
   }
 );
@@ -155,6 +172,35 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
+      })
+      // Initialize Auth
+      .addCase(initializeAuth.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(initializeAuth.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.user = action.payload.user;
+        state.token = action.payload.token;
+        state.isAuthenticated = action.payload.isAuthenticated;
+        state.error = null;
+        
+        // Set active mode based on user role
+        if (action.payload.user) {
+          const stored = localStorage.getItem('crealith_active_mode');
+          if (stored === 'BUYER' || stored === 'SELLER') {
+            state.activeMode = stored as any;
+          } else {
+            state.activeMode = action.payload.user.role === 'SELLER' ? 'SELLER' : 'BUYER';
+            localStorage.setItem('crealith_active_mode', state.activeMode);
+          }
+        }
+      })
+      .addCase(initializeAuth.rejected, (state) => {
+        state.isLoading = false;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.token = null;
+        state.error = null;
       });
   },
 });

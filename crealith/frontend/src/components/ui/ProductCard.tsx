@@ -1,35 +1,31 @@
 import React from 'react';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Product } from '@/types';
 import {
   Eye,
   Edit,
   Trash2,
-  Download,
   Star,
   TrendingUp,
-  Euro,
-  Calendar,
-  BarChart3,
   Heart,
   ShoppingCart,
-  CheckCircle,
   Sparkles,
   Award
 } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
-  variant?: 'buyer' | 'seller' | 'admin';
+  variant?: 'buyer' | 'seller' | 'admin' | 'minimal';
+  size?: 'small' | 'medium' | 'large';
   onView?: (productId: string) => void;
   onEdit?: (productId: string) => void;
   onDelete?: (productId: string) => void;
   onToggleFeatured?: (productId: string) => void;
   onAddToCart?: (productId: string) => void;
   onAddToFavorites?: (productId: string) => void;
-  isInCart?: boolean;
+  onPreview?: (product: Product) => void;
   isFavorite?: boolean;
+  showStats?: boolean;
+  showActions?: boolean;
 }
 
 const getStatusClassesFromStatus = (status?: string) => {
@@ -44,187 +40,346 @@ const getStatusLabelFromStatus = (status?: string) => {
   return status === 'active' || status === 'published' ? 'Publié' : 'Brouillon';
 };
 
+const getSizeClasses = (size: 'small' | 'medium' | 'large') => {
+  switch (size) {
+    case 'small':
+      return {
+        container: 'rounded-lg',
+        image: 'aspect-[4/3]',
+        padding: 'p-3',
+        title: 'text-sm font-medium',
+        price: 'text-base',
+        actions: 'gap-1'
+      };
+    case 'large':
+      return {
+        container: 'rounded-2xl',
+        image: 'aspect-[4/3]',
+        padding: 'p-6',
+        title: 'text-xl font-semibold',
+        price: 'text-2xl',
+        actions: 'gap-3'
+      };
+    default: // medium
+      return {
+        container: 'rounded-xl',
+        image: 'aspect-[4/3]',
+        padding: 'p-4',
+        title: 'text-lg font-semibold',
+        price: 'text-xl',
+        actions: 'gap-2'
+      };
+  }
+};
+
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   variant = 'buyer',
+  size = 'medium',
   onView,
   onEdit,
   onDelete,
   onToggleFeatured,
   onAddToCart,
   onAddToFavorites,
-  isInCart = false,
-  isFavorite = false
+  onPreview,
+  isFavorite = false,
+  showStats = false,
+  showActions = true
 }) => {
-  const discount = product.originalPrice ? ((parseFloat(product.originalPrice) - parseFloat(product.price)) / parseFloat(product.originalPrice)) * 100 : 0;
+  const discount = product.originalPrice ?
+    ((parseFloat(product.originalPrice) - parseFloat(product.price)) / parseFloat(product.originalPrice)) * 100 : 0;
+
+  const isMinimal = variant === 'minimal';
+  const sizeClasses = getSizeClasses(size);
+
+  // Classes de base adaptées au thème sombre
+  const containerClasses = `group relative overflow-hidden ${sizeClasses.container} bg-dark-800 border border-slate-700 hover:border-slate-600 transition-all duration-500 hover:shadow-2xl hover:shadow-glow transform hover:-translate-y-2 cursor-pointer`;
+
+  const handleCardClick = () => {
+    if (onView) {
+      onView(product.id);
+    }
+  };
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-dark-800 border border-slate-700 hover:border-slate-600 transition-all duration-500 hover:shadow-2xl hover:shadow-glow transform hover:-translate-y-2">
+    <div
+      className={containerClasses}
+      onClick={handleCardClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleCardClick();
+        }
+      }}
+    >
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className={`relative ${sizeClasses.image} overflow-hidden`}>
         <img
-          src={product.thumbnailUrl || product.image}
+          src={product.thumbnailUrl || product.image || 'https://via.placeholder.com/400x300?text=No+Image'}
           alt={product.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
         />
 
         {/* Overlay gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-dark-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        {!isMinimal && (
+          <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        )}
 
         {/* Badges */}
-        <div className="absolute top-4 left-4 flex flex-col space-y-2 z-10">
-          {product.isFeatured && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-warning-500 to-warning-600 text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
-              <Award className="w-3 h-3" />
-              <span>En vedette</span>
-            </div>
-          )}
-          {discount > 0 && (
-            <div className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-error-500 to-error-600 text-white text-xs font-bold rounded-full shadow-lg">
-              <Sparkles className="w-3 h-3" />
-              <span>-{discount.toFixed(0)}%</span>
-            </div>
-          )}
-          {/* Status Badge */}
-          <div className={`absolute bottom-3 left-3 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${getStatusClassesFromStatus((product as any).status)}`}>
-            {getStatusLabelFromStatus((product as any).status)}
+        {!isMinimal && (
+          <div className="absolute top-3 left-3 flex flex-col space-y-2 z-10">
+            {product.isFeatured && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-warning-500 to-warning-600 text-white text-xs font-bold rounded-full shadow-lg">
+                <Award className="w-3 h-3" />
+                <span>En vedette</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-gradient-to-r from-error-500 to-error-600 text-white text-xs font-bold rounded-full shadow-lg">
+                <Sparkles className="w-3 h-3" />
+                <span>-{Math.round(discount)}%</span>
+              </div>
+            )}
+            {/* Status Badge for seller/admin */}
+            {(variant === 'seller' || variant === 'admin') && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-medium ${getStatusClassesFromStatus((product as any).status)}`}>
+                {getStatusLabelFromStatus((product as any).status)}
+              </div>
+            )}
           </div>
-        </div>
+        )}
 
-        {/* Action Buttons */}
-        <div className="absolute top-4 right-4 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0 z-10">
-          {variant === 'buyer' && (
-            <>
-              <button
-                onClick={() => onAddToFavorites?.(product.id)}
-                className={`p-3 rounded-xl transition-all duration-300 shadow-lg backdrop-blur-sm ${isFavorite
-                  ? 'bg-accent-600 text-white hover:bg-accent-700 shadow-neon-accent'
-                  : 'bg-dark-800/80 text-slate-300 hover:text-accent-400 hover:bg-dark-700/80 border border-slate-600/50'
-                  }`}
-                title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              >
-                <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
-              </button>
-              <button
-                onClick={() => onView?.(product.id)}
-                className="p-3 bg-dark-800/80 text-slate-300 hover:text-primary-400 hover:bg-dark-700/80 rounded-xl transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
-                title="Voir le produit"
-              >
-                <Eye className="w-4 h-4" />
-              </button>
-            </>
-          )}
+        {/* Action Buttons - Favoris visible au survol même en mode minimal */}
+        {showActions && onAddToFavorites && (
+          <div className="absolute top-3 right-3 z-10 opacity-0 group-hover:opacity-100 transition-all duration-300" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onAddToFavorites?.(product.id)}
+              className={`p-2 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm ${isFavorite
+                ? 'bg-pink-500 text-white hover:bg-pink-600'
+                : 'bg-gray-800/90 text-gray-300 hover:text-pink-400 hover:bg-gray-700/90 border border-gray-600'
+                }`}
+              title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            >
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
+            </button>
+          </div>
+        )}
 
-          {variant === 'seller' && (
-            <>
-              <button
-                onClick={() => onEdit?.(product.id)}
-                className="p-3 bg-dark-800/80 text-slate-300 hover:text-primary-400 hover:bg-dark-700/80 rounded-xl transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
-                title="Modifier"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDelete?.(product.id)}
-                className="p-3 bg-dark-800/80 text-slate-300 hover:text-error-400 hover:bg-dark-700/80 rounded-xl transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
-                title="Supprimer"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
+        {/* Action Buttons - Mode normal */}
+        {showActions && !isMinimal && (
+          <div className={`absolute top-3 right-3 flex flex-col ${sizeClasses.actions} z-10 opacity-0 group-hover:opacity-100 transition-all duration-300`} onClick={(e) => e.stopPropagation()}>
+            {variant === 'buyer' && (
+              <>
+                <button
+                  onClick={() => onAddToFavorites?.(product.id)}
+                  className={`p-2 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm ${isFavorite
+                    ? 'bg-accent-600 text-white hover:bg-accent-700 shadow-neon-accent'
+                    : 'bg-dark-800/80 text-slate-300 hover:text-accent-400 hover:bg-dark-700/80 border border-slate-600/50'
+                    }`}
+                  title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                >
+                  <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                </button>
+                <button
+                  onClick={() => onView?.(product.id)}
+                  className="p-2 bg-dark-800/80 text-slate-300 hover:text-primary-400 hover:bg-dark-700/80 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
+                  title="Voir le produit"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+              </>
+            )}
+
+            {variant === 'seller' && (
+              <>
+                <button
+                  onClick={() => onView?.(product.id)}
+                  className="p-2 bg-dark-800/80 text-slate-300 hover:text-primary-400 hover:bg-dark-700/80 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
+                  title="Voir le produit"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onEdit?.(product.id)}
+                  className="p-2 bg-dark-800/80 text-slate-300 hover:text-warning-400 hover:bg-dark-700/80 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
+                  title="Modifier le produit"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete?.(product.id)}
+                  className="p-2 bg-dark-800/80 text-slate-300 hover:text-error-400 hover:bg-dark-700/80 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
+                  title="Supprimer le produit"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+
+            {variant === 'admin' && (
+              <>
+                <button
+                  onClick={() => onToggleFeatured?.(product.id)}
+                  className={`p-2 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm ${product.isFeatured
+                    ? 'bg-warning-500/80 text-white hover:bg-warning-600/80'
+                    : 'bg-dark-800/80 text-slate-300 hover:text-warning-400 hover:bg-dark-700/80 border border-slate-600/50'
+                    }`}
+                  title={product.isFeatured ? 'Retirer de la vedette' : 'Mettre en vedette'}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onView?.(product.id)}
+                  className="p-2 bg-dark-800/80 text-slate-300 hover:text-primary-400 hover:bg-dark-700/80 rounded-full transition-all duration-300 shadow-lg backdrop-blur-sm border border-slate-600/50"
+                  title="Voir le produit"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="p-6">
-        {/* Title and Category */}
-        <div className="mb-4">
-          <h3 className="font-bold text-slate-100 text-lg line-clamp-2 mb-2 group-hover:text-primary-300 transition-colors duration-300">
-            {product.title}
-          </h3>
-          <p className="text-sm text-slate-400 font-medium flex items-center gap-2">
-            <div className="w-2 h-2 bg-primary-500 rounded-full"></div>
-            {product.category?.name || 'Catégorie inconnue'}
-          </p>
-        </div>
-
-        {/* Price */}
-        <div className="flex items-center space-x-3 mb-4">
-          <span className="text-2xl font-black text-slate-100">€{parseFloat(product.price).toFixed(2)}</span>
-          {product.originalPrice && (
-            <span className="text-lg text-slate-500 line-through font-medium">€{parseFloat(product.originalPrice).toFixed(2)}</span>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center justify-between text-sm text-slate-400 mb-4">
-          <div className="flex items-center space-x-2">
-            <Star className="w-4 h-4 text-warning-400 fill-current" />
-            <span className="font-bold text-slate-300">{(product.rating || 0).toFixed(1)}</span>
-            <span>({product.reviewCount || (Array.isArray(product.reviews) ? product.reviews.length : 0)})</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Download className="w-4 h-4 text-secondary-400" />
-            <span className="font-bold text-slate-300">{product.downloadsCount || product.downloads || 0}</span>
-          </div>
-        </div>
-
-        {/* Seller Stats (for seller variant) */}
-        {variant === 'seller' && (
-          <div className="grid grid-cols-2 gap-4 mb-4 p-4 bg-dark-700/50 rounded-xl border border-slate-600/50">
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-2 text-success-400 mb-1">
-                <TrendingUp className="w-4 h-4" />
-                <span className="text-sm font-black text-slate-200">{product.salesCount || product.totalSales || 0}</span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium">Ventes</p>
-            </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center space-x-2 text-secondary-400 mb-1">
-                <Euro className="w-4 h-4" />
-                <span className="text-sm font-black text-slate-200">€{((product.salesCount || 0) * parseFloat(product.price)).toFixed(2)}</span>
-              </div>
-              <p className="text-xs text-slate-400 font-medium">Revenus</p>
-            </div>
+      <div className={sizeClasses.padding}>
+        {/* Category */}
+        {product.category && !isMinimal && (
+          <div className="text-xs text-gray-400 mb-2">
+            {product.category.name}
           </div>
         )}
 
-        {/* Action Button */}
-        {variant === 'buyer' && onAddToCart && (
-          <button
-            onClick={() => onAddToCart(product.id)}
-            disabled={isInCart}
-            className={`w-full py-3 px-4 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center space-x-2 ${isInCart
-              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-              : 'btn-primary'
-              }`}
-          >
-            {isInCart ? (
-              <>
-                <CheckCircle className="w-4 h-4" />
-                <span>Dans le panier</span>
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-4 h-4" />
-                <span>Ajouter au panier</span>
-              </>
+        {/* Title */}
+        <h3 className={`${sizeClasses.title} text-white mb-2 line-clamp-2 group-hover:text-primary-400 transition-colors`}>
+          {product.title}
+        </h3>
+
+        {/* Minimal: show rating, price and actions */}
+        {isMinimal ? (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-4 h-4 ${i < Math.floor(product.rating || 0)
+                      ? 'text-yellow-400 fill-current'
+                      : 'text-gray-600'
+                      }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-gray-400">
+                {(product.rating ?? 0).toFixed(1)} ({product.reviewCount || product.totalReviews || 0})
+              </span>
+            </div>
+            {/* Prix - Mis en avant */}
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl font-bold text-primary-400">
+                {product.price}€
+              </span>
+              {product.originalPrice && parseFloat(product.originalPrice) > parseFloat(product.price) && (
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-500 line-through">
+                    {product.originalPrice}€
+                  </span>
+                  <span className="text-xs text-green-400 font-semibold">
+                    -{Math.round(discount)}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+          </>
+        ) : (
+          <>
+            {/* Description */}
+            {product.description && (
+              <p className="text-sm text-gray-400 mb-3 line-clamp-2">
+                {product.description}
+              </p>
             )}
-          </button>
+
+            {/* Rating */}
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                  <Star
+                    key={i}
+                    className={`w-4 h-4 ${i < Math.floor(product.rating || 0)
+                      ? 'text-yellow-400 fill-current'
+                      : 'text-gray-600'
+                      }`}
+                  />
+                ))}
+              </div>
+              <span className="text-sm text-gray-400">
+                {product.rating?.toFixed(1) || '0.0'} ({product.reviewCount || 0})
+              </span>
+            </div>
+
+            {/* Price */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className={`${sizeClasses.price} font-bold text-white`}>
+                  {product.price}€
+                </span>
+                {product.originalPrice && (
+                  <span className="text-sm text-gray-400 line-through">
+                    {product.originalPrice}€
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Stats for seller/admin */}
+            {showStats && (variant === 'seller' || variant === 'admin') && (
+              <div className="grid grid-cols-3 gap-2 mb-4 text-xs">
+                <div className="text-center">
+                  <div className="text-gray-400">Vues</div>
+                  <div className="text-white font-semibold">{product.reviewCount || 0}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-gray-400">Ventes</div>
+                  <div className="text-white font-semibold">{product.salesCount || 0}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-gray-400">Téléchargements</div>
+                  <div className="text-white font-semibold">{product.downloadsCount || 0}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            {showActions && variant === 'buyer' && (
+              <div className={`flex ${sizeClasses.actions}`} onClick={(e) => e.stopPropagation()}>
+                <button
+                  onClick={() => onAddToCart?.(product.id)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Ajouter</span>
+                </button>
+                {onPreview && (
+                  <button
+                    onClick={() => onPreview(product)}
+                    className="px-4 py-2 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white rounded-lg transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+          </>
         )}
-
-        {/* Date */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
-          <div className="flex items-center space-x-2 text-xs text-slate-500">
-            <Calendar className="w-3 h-3" />
-            <span className="font-medium">Ajouté le {product.createdAt ? format(new Date(product.createdAt), 'dd MMM yyyy', { locale: fr }) : 'Date inconnue'}</span>
-          </div>
-        </div>
       </div>
-
-      {/* Hover effect border */}
-      <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-primary-500/30 transition-all duration-500 pointer-events-none"></div>
     </div>
   );
 };
+
+export default ProductCard;

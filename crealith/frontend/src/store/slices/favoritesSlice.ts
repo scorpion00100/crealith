@@ -4,12 +4,14 @@ import { favoritesService } from '@/services/favorites.service';
 
 interface FavoritesState {
   items: Product[];
+  favoriteIds: string[];
   isLoading: boolean;
   error: string | null;
 }
 
 const initialState: FavoritesState = {
   items: [],
+  favoriteIds: [],
   isLoading: false,
   error: null,
 };
@@ -61,12 +63,18 @@ const favoritesSlice = createSlice({
       if (existingIndex === -1) {
         state.items.push(product);
       }
+      if (!state.favoriteIds.includes(product.id)) {
+        state.favoriteIds.push(product.id);
+      }
     },
     removeFromFavorites: (state, action: PayloadAction<string>) => {
-      state.items = state.items.filter(item => item.id !== action.payload);
+      const id = action.payload;
+      state.items = state.items.filter(item => item.id !== id);
+      state.favoriteIds = state.favoriteIds.filter(pid => pid !== id);
     },
     clearFavorites: (state) => {
       state.items = [];
+      state.favoriteIds = [];
     },
     clearError: (state) => {
       state.error = null;
@@ -82,6 +90,7 @@ const favoritesSlice = createSlice({
       .addCase(fetchFavorites.fulfilled, (state, action) => {
         state.isLoading = false;
         state.items = action.payload;
+        state.favoriteIds = action.payload.map((p: Product) => p.id);
       })
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.isLoading = false;
@@ -94,7 +103,10 @@ const favoritesSlice = createSlice({
       })
       .addCase(addFavoriteAsync.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Note: pour ajouter, il faudrait le produit complet. Ici on laisse l'état tel quel; l'UI se rafraîchit via refetch si besoin.
+        const productId = action.payload as unknown as string;
+        if (!state.favoriteIds.includes(productId)) {
+          state.favoriteIds.push(productId);
+        }
       })
       .addCase(addFavoriteAsync.rejected, (state, action) => {
         state.isLoading = false;
@@ -109,6 +121,7 @@ const favoritesSlice = createSlice({
         state.isLoading = false;
         const productId = action.payload as string;
         state.items = state.items.filter(item => item.id !== productId);
+        state.favoriteIds = state.favoriteIds.filter(id => id !== productId);
       })
       .addCase(removeFavoriteAsync.rejected, (state, action) => {
         state.isLoading = false;

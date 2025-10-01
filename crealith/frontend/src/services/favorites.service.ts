@@ -3,8 +3,14 @@ import { Product } from '@/types';
 
 class FavoritesServiceClass {
   async getFavorites(): Promise<Product[]> {
-    // Backend returns { success, data } or array; apiService normalizes to data
-    return apiService.get<Product[]>('/favorites');
+    const resp = await apiService.get<any>('/favorites');
+    // Support multiple backend shapes: {success,data:[...]}, {data:[...]}, [...]
+    const raw = resp?.data?.data ?? resp?.data ?? resp;
+    const items = Array.isArray(raw)
+      ? raw
+      : (Array.isArray(raw?.items) ? raw.items : []);
+    // Normalize id
+    return items.map((p: any) => ({ ...p, id: p.id || p._id }));
   }
 
   async add(productId: string): Promise<{ success: boolean }> {

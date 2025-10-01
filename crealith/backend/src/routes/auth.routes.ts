@@ -10,7 +10,16 @@ import {
   validateRedirectUrl,
   auditAuthAttempts
 } from '../middleware/security.middleware';
-import { authValidators, validateRequest } from '../middleware/validation.middleware';
+import { 
+  validate, 
+  registerSchema, 
+  loginSchema, 
+  forgotPasswordSchema, 
+  resetPasswordSchema, 
+  verifyEmailSchema,
+  changePasswordSchema,
+  updateProfileSchema
+} from '../utils/validation';
 import passport from '../config/passport';
 import crypto from 'crypto';
 import { redisService } from '../services/redis.service';
@@ -55,7 +64,7 @@ const requireCsrf = (req: import('express').Request, res: import('express').Resp
 };
 
 // Route d'inscription
-router.post('/register', registerRateLimit, auditAuthAttempts, authValidators.register, validateRequest, async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+router.post('/register', registerRateLimit, auditAuthAttempts, validate(registerSchema), async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
   try {
     const { email, password, firstName, lastName, role } = req.body;
     
@@ -97,7 +106,7 @@ router.post('/register', registerRateLimit, auditAuthAttempts, authValidators.re
 });
 
 // Route de connexion
-router.post('/login', authRateLimit, auditAuthAttempts, authValidators.login, validateRequest, async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+router.post('/login', authRateLimit, auditAuthAttempts, validate(loginSchema), async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
   try {
     const { email, password } = req.body;
     
@@ -263,7 +272,7 @@ router.get('/session-info', async (req, res, next) => {
 });
 
 // Route de changement de mot de passe
-router.post('/change-password', authenticateToken, async (req, res, next) => {
+router.post('/change-password', authenticateToken, validate(changePasswordSchema), async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
     
@@ -289,7 +298,7 @@ router.post('/change-password', authenticateToken, async (req, res, next) => {
 // (Supprimé) Route de demande de réinitialisation de mot de passe dupliquée
 
 // Route de réinitialisation de mot de passe
-router.post('/reset-password', authValidators.resetPassword, validateRequest, async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+router.post('/reset-password', validate(resetPasswordSchema), async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
   try {
     const { token, newPassword } = req.body;
     
@@ -338,8 +347,25 @@ router.get('/profile', authenticateToken, async (req, res, next) => {
   }
 });
 
+// Mise à jour du profil utilisateur
+router.put('/profile', authenticateToken, validate(updateProfileSchema), async (req, res, next) => {
+  try {
+    if (!req.user) {
+      throw createError.unauthorized('Authentication required');
+    }
+
+    const { firstName, lastName, avatar, bio } = req.body || {};
+    const service = new AuthService();
+    const updated = await service.updateUserProfile(req.user.userId, { firstName, lastName, avatar, bio });
+
+    res.json({ success: true, message: 'Profile updated', data: { user: updated } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Route pour vérifier l'email
-router.post('/verify-email', emailVerificationRateLimit, async (req, res, next) => {
+router.post('/verify-email', emailVerificationRateLimit, validate(verifyEmailSchema), async (req, res, next) => {
   try {
     const { token } = req.body;
 
@@ -379,7 +405,7 @@ router.post('/resend-verification', emailVerificationRateLimit, async (req, res,
 });
 
 // Route pour demander la réinitialisation de mot de passe
-router.post('/forgot-password', passwordResetRateLimit, authValidators.forgotPassword, validateRequest, async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
+router.post('/forgot-password', passwordResetRateLimit, validate(forgotPasswordSchema), async (req: import('express').Request, res: import('express').Response, next: import('express').NextFunction) => {
   try {
     const { email } = req.body;
 

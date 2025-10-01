@@ -18,7 +18,8 @@ import {
   ChevronDown,
   Sparkles,
   Bell,
-  Settings
+  Settings,
+  Package
 } from 'lucide-react';
 import { Download as DownloadIcon } from 'lucide-react';
 
@@ -26,12 +27,42 @@ export const Header: React.FC = () => {
   const dispatch = useAppDispatch();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = React.useRef<HTMLDivElement | null>(null);
+  const mobileMenuRef = React.useRef<HTMLDivElement | null>(null);
   const { isAuthenticated, user, logout } = useAuth();
   const { items: cartItems } = useAppSelector(state => state.cart);
   const ordersCount = useAppSelector(s => (s as any)?.orders?.orders?.length || 0);
   const activeMode = useAppSelector(s => s.auth.activeMode);
+  // Forcer le mode vendeur si le rôle de l'utilisateur est SELLER (on retire la bascule visible)
+  const isSellerMode = !!user && user.role === 'SELLER';
 
   const cartItemsCount = cartItems.length;
+
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (isUserMenuOpen && userMenuRef.current && !userMenuRef.current.contains(target)) {
+        setIsUserMenuOpen(false);
+      }
+      if (isMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isUserMenuOpen) setIsUserMenuOpen(false);
+        if (isMenuOpen) setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isUserMenuOpen, isMenuOpen]);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-gray-800/95 backdrop-blur-md border-b border-gray-700/50 shadow-medium">
@@ -55,26 +86,47 @@ export const Header: React.FC = () => {
             {isAuthenticated ? (
               <>
                 <Link
-                  to={activeMode === 'SELLER' ? '/seller-dashboard' : '/buyer-dashboard'}
+                  to={isSellerMode ? '/seller-dashboard' : '/buyer-dashboard'}
                   className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
                 >
                   <Home className="w-3 h-3" />
                   <span>Dashboard</span>
                 </Link>
-                <Link
-                  to="/catalog"
-                  className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-                >
-                  <Grid3X3 className="w-3 h-3" />
-                  <span>Catalogue</span>
-                </Link>
-                <Link
-                  to="/downloads"
-                  className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
-                >
-                  <DownloadIcon className="w-3 h-3" />
-                  <span>Téléchargements</span>
-                </Link>
+                {!isSellerMode && (
+                  <Link
+                    to="/catalog"
+                    className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                  >
+                    <Grid3X3 className="w-3 h-3" />
+                    <span>Catalogue</span>
+                  </Link>
+                )}
+                {isSellerMode ? (
+                  <Link
+                    to="/seller-dashboard#products"
+                    className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                  >
+                    <Package className="w-3 h-3" />
+                    <span>Mes produits</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/orders"
+                    className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                  >
+                    <ShoppingCart className="w-3 h-3" />
+                    <span>Mes commandes</span>
+                  </Link>
+                )}
+                {!isSellerMode && (
+                  <Link
+                    to="/downloads"
+                    className="flex items-center space-x-1 text-gray-300 hover:text-primary-300 transition-all duration-300 group font-medium px-2 py-2 rounded-lg hover:bg-gray-700/50 text-sm"
+                  >
+                    <DownloadIcon className="w-3 h-3" />
+                    <span>Téléchargements</span>
+                  </Link>
+                )}
               </>
             ) : (
               <>
@@ -121,30 +173,35 @@ export const Header: React.FC = () => {
 
           {/* Actions - Section droite compacte */}
           <div className="flex items-center space-x-2 ml-1">
-            {/* Cart */}
-            <Link
-              to="/cart"
-              className="relative p-2 text-gray-400 hover:text-primary-400 transition-all duration-300 group bg-gray-800 hover:bg-primary-500/10 rounded-xl"
-            >
-              <ShoppingCart className="w-4 h-4 group-hover:animate-wiggle" />
-              {cartItemsCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-bounce-in shadow-premium">
-                  {cartItemsCount}
-                </span>
-              )}
-            </Link>
+            {/* Cart et Favorites SEULEMENT pour buyer/visiteur */}
+            {user?.role !== 'SELLER' && (
+              <>
+                {/* Cart */}
+                <Link
+                  to="/cart"
+                  className="relative p-2 text-gray-400 hover:text-primary-400 transition-all duration-300 group bg-gray-800 hover:bg-primary-500/10 rounded-xl"
+                >
+                  <ShoppingCart className="w-4 h-4 group-hover:animate-wiggle" />
+                  {cartItemsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-500 text-white text-xs rounded-full flex items-center justify-center font-bold animate-bounce-in shadow-premium">
+                      {cartItemsCount}
+                    </span>
+                  )}
+                </Link>
 
-            {/* Favorites */}
-            <Link
-              to="/favorites"
-              className="p-2 text-gray-400 hover:text-secondary-400 transition-all duration-300 group bg-gray-800 hover:bg-secondary-500/10 rounded-xl"
-            >
-              <Heart className="w-4 h-4 group-hover:animate-wiggle" />
-            </Link>
+                {/* Favorites */}
+                <Link
+                  to="/favorites"
+                  className="p-2 text-gray-400 hover:text-secondary-400 transition-all duration-300 group bg-gray-800 hover:bg-secondary-500/10 rounded-xl"
+                >
+                  <Heart className="w-4 h-4 group-hover:animate-wiggle" />
+                </Link>
+              </>
+            )}
 
             {/* User Menu */}
             {isAuthenticated ? (
-              <div className="relative">
+              <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 p-2 rounded-xl hover:bg-gray-800 transition-all duration-300 group"
@@ -156,17 +213,6 @@ export const Header: React.FC = () => {
                     <span className="text-gray-100 font-medium text-sm">
                       {user?.firstName || 'Utilisateur'}
                     </span>
-                    {user?.role === 'SELLER' && (
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full border ${activeMode === 'SELLER'
-                          ? 'bg-primary-500/20 text-primary-300 border-primary-500/40'
-                          : 'bg-secondary-500/20 text-secondary-300 border-secondary-500/40'
-                          }`}
-                        title={`Mode actif: ${activeMode === 'SELLER' ? 'Vendeur' : 'Acheteur'}`}
-                      >
-                        {activeMode === 'SELLER' ? 'Mode Vendeur' : 'Mode Acheteur'}
-                      </span>
-                    )}
                   </div>
                   <ChevronDown className="w-3 h-3 text-gray-500 group-hover:text-primary-400 transition-colors duration-300" />
                 </button>
@@ -180,38 +226,87 @@ export const Header: React.FC = () => {
                     </div>
 
                     <div className="py-2">
-                      <Link
-                        to="/buyer-dashboard"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Mon Dashboard</span>
-                      </Link>
-                      <Link
-                        to="/downloads"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <div className="w-2 h-2 bg-primary-500 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Mes Achats{ordersCount ? ` (${ordersCount})` : ''}</span>
-                      </Link>
-                      <Link
-                        to="/settings"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Paramètres</span>
-                      </Link>
-                      <Link
-                        to="/invoices"
-                        className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        <div className="w-2 h-2 bg-gray-400 rounded-full mr-3 group-hover:scale-150 transition-transform duration-300"></div>
-                        <span className="font-medium">Facturation</span>
-                      </Link>
+                      {user?.role === 'SELLER' ? (
+                        <>
+                          {/* Menu Seller */}
+                          <Link
+                            to="/seller-dashboard"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Package className="w-4 h-4 mr-3 group-hover:text-primary-400" />
+                            <span className="font-medium">Tableau de bord</span>
+                          </Link>
+                          <Link
+                            to="/seller-dashboard#products"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Grid3X3 className="w-4 h-4 mr-3 group-hover:text-primary-400" />
+                            <span className="font-medium">Mes produits</span>
+                          </Link>
+                          <Link
+                            to="/profile"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <User className="w-4 h-4 mr-3 group-hover:text-text-200" />
+                            <span className="font-medium">Profil</span>
+                          </Link>
+                          <Link
+                            to="/settings"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Settings className="w-4 h-4 mr-3 group-hover:text-text-200" />
+                            <span className="font-medium">Paramètres</span>
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          {/* Menu Buyer */}
+                          <Link
+                            to="/buyer-dashboard"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Package className="w-4 h-4 mr-3 group-hover:text-primary-400" />
+                            <span className="font-medium">Tableau de bord</span>
+                          </Link>
+                          <Link
+                            to="/orders"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <DownloadIcon className="w-4 h-4 mr-3 group-hover:text-primary-400" />
+                            <span className="font-medium">Mes commandes</span>
+                          </Link>
+                          <Link
+                            to="/favorites"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-primary-400 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Heart className="w-4 h-4 mr-3 group-hover:text-primary-400" />
+                            <span className="font-medium">Favoris</span>
+                          </Link>
+                          <Link
+                            to="/profile"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <User className="w-4 h-4 mr-3 group-hover:text-text-200" />
+                            <span className="font-medium">Profil</span>
+                          </Link>
+                          <Link
+                            to="/settings"
+                            className="flex items-center px-4 py-3 text-gray-400 hover:bg-gray-700 hover:text-text-200 transition-all duration-300 group"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Settings className="w-4 h-4 mr-3 group-hover:text-text-200" />
+                            <span className="font-medium">Paramètres</span>
+                          </Link>
+                        </>
+                      )}
                     </div>
 
                     <div className="border-t border-gray-700 pt-2">
@@ -265,7 +360,7 @@ export const Header: React.FC = () => {
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="lg:hidden border-t border-gray-700 py-4 animate-in-down">
+          <div ref={mobileMenuRef} className="lg:hidden border-t border-gray-700 py-4 animate-in-down">
             <nav className="space-y-2">
               {isAuthenticated ? (
                 <>
@@ -277,30 +372,16 @@ export const Header: React.FC = () => {
                     <Home className="w-5 h-5" />
                     <span className="font-medium">Dashboard</span>
                   </Link>
-                  <Link
-                    to="/catalog"
-                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Grid3X3 className="w-5 h-5" />
-                    <span className="font-medium">Catalogue</span>
-                  </Link>
-                  <Link
-                    to="/downloads"
-                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <DownloadIcon className="w-5 h-5" />
-                    <span className="font-medium">Téléchargements</span>
-                  </Link>
-                  <Link
-                    to="/invoices"
-                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <Settings className="w-5 h-5" />
-                    <span className="font-medium">Facturation</span>
-                  </Link>
+                  {!isSellerMode && (
+                    <Link
+                      to="/catalog"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Grid3X3 className="w-5 h-5" />
+                      <span className="font-medium">Catalogue</span>
+                    </Link>
+                  )}
                   <Link
                     to="/orders"
                     className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
@@ -308,6 +389,30 @@ export const Header: React.FC = () => {
                   >
                     <ShoppingCart className="w-5 h-5" />
                     <span className="font-medium">Mes commandes</span>
+                  </Link>
+                  <Link
+                    to="/favorites"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Heart className="w-5 h-5" />
+                    <span className="font-medium">Favoris</span>
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User className="w-5 h-5" />
+                    <span className="font-medium">Profil</span>
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-primary-300 rounded-2xl transition-all duration-300 group"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span className="font-medium">Paramètres</span>
                   </Link>
                 </>
               ) : (

@@ -5,6 +5,8 @@ import { store } from '@/store';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { GlobalLoadingOverlay } from '@/components/ui/GlobalLoadingOverlay';
+import { NotificationCenter } from '@/components/ui/NotificationCenter';
 import { PageErrorBoundary, ComponentErrorBoundary } from '@/components/ErrorBoundary';
 import {
   ProtectedRoute,
@@ -18,7 +20,7 @@ import './index.css';
 
 // Lazy loading des pages principales
 const HomePage = lazy(() => import('@/pages/HomePage').then(module => ({ default: module.HomePage })));
-const CatalogPage = lazy(() => import('@/pages/CatalogPage.simple').then(module => ({ default: module.CatalogPage })));
+const CatalogPage = lazy(() => import('@/pages/CatalogPage').then(module => ({ default: module.CatalogPage })));
 const ProductDetailPage = lazy(() => import('@/pages/ProductDetailPage').then(module => ({ default: module.ProductDetailPage })));
 const CartPage = lazy(() => import('@/pages/CartPage').then(module => ({ default: module.CartPage })));
 const CheckoutPage = lazy(() => import('@/pages/CheckoutPage').then(module => ({ default: module.CheckoutPage })));
@@ -39,6 +41,7 @@ const UnauthorizedPage = lazy(() => import('@/pages/UnauthorizedPage').then(modu
 // Lazy loading des pages de dashboard
 const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 const SellerDashboardPage = lazy(() => import('@/pages/seller/SellerDashboardPage').then(module => ({ default: module.SellerDashboardPage })));
+const SellerProductDetailPage = lazy(() => import('@/pages/seller/SellerProductDetailPage').then(module => ({ default: module.default })));
 const BuyerDashboardPage = lazy(() => import('@/pages/buyer/BuyerDashboardPage').then(module => ({ default: module.default })));
 const OrdersPage = lazy(() => import('@/pages/OrdersPage').then(module => ({ default: module.OrdersPage })));
 const InvoicesPage = lazy(() => import('@/pages/InvoicesPage').then(module => ({ default: module.default })));
@@ -49,6 +52,8 @@ const AboutPage = lazy(() => import('@/pages/AboutPage').then(module => ({ defau
 const ContactPage = lazy(() => import('@/pages/ContactPage').then(module => ({ default: module.ContactPage })));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(module => ({ default: module.ProfilePage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
+const SellerProfilePage = lazy(() => import('@/pages/seller/SellerProfilePage').then(module => ({ default: module.SellerProfilePage })));
+const SellerSettingsPage = lazy(() => import('@/pages/seller/SellerSettingsPage').then(module => ({ default: module.SellerSettingsPage })));
 
 const App: React.FC = () => {
   return (
@@ -57,6 +62,8 @@ const App: React.FC = () => {
         <Router>
           <AuthProvider>
             <Suspense fallback={<LoadingSpinner fullScreen text="Chargement de la page..." />}>
+              <GlobalLoadingOverlay />
+              <NotificationCenter />
               <Routes>
                 {/* Pages avec Layout général (Header + Footer) */}
                 <Route path="/" element={
@@ -195,6 +202,31 @@ const App: React.FC = () => {
                     <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard vendeur..." />}>
                       <SellerDashboardPage />
                     </Suspense>
+                  </SellerRoute>
+                } />
+                <Route path="/seller/product/:id" element={
+                  <SellerRoute>
+                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du produit..." />}>
+                      <SellerProductDetailPage />
+                    </Suspense>
+                  </SellerRoute>
+                } />
+                <Route path="/seller/profile" element={
+                  <SellerRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement du profil vendeur..." />}>
+                        <SellerProfilePage />
+                      </Suspense>
+                    </Layout>
+                  </SellerRoute>
+                } />
+                <Route path="/seller/settings" element={
+                  <SellerRoute>
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement des paramètres vendeur..." />}>
+                        <SellerSettingsPage />
+                      </Suspense>
+                    </Layout>
                   </SellerRoute>
                 } />
                 <Route path="/buyer-dashboard" element={

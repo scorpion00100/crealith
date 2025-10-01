@@ -46,6 +46,24 @@ export const requireRole = (roles: string[]) => {
   };
 };
 
+// Middleware d'authentification optionnelle (ne lance pas d'erreur si pas de token)
+export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+      const payload = verifyAccessToken(token);
+      req.user = payload;
+    }
+    // Si pas de token, on continue sans req.user (reste undefined)
+    next();
+  } catch (error) {
+    // Token invalide, on continue sans user
+    next();
+  }
+};
+
 export const requireAuth = authenticateToken;
 export const requireBuyer = requireRole(['BUYER', 'SELLER', 'ADMIN']);
 export const requireSeller = requireRole(['SELLER', 'ADMIN']);

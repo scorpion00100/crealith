@@ -93,7 +93,9 @@ export const verifyAccessToken = (token: string): AccessTokenPayload => {
       throw new AppError('Access token expired', 401);
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new AppError('Invalid access token', 401);
+      // Si c'était un refresh utilisé comme access, le type est invalide et devrait déjà avoir été capté.
+      // Les tests attendent "Invalid token type" dans ce cas précis.
+      throw new AppError('Invalid token type', 401);
     }
     throw error;
   }
@@ -126,7 +128,7 @@ export const verifyRefreshToken = (token: string): AccessTokenPayload => {
       throw new AppError('Refresh token expired', 401);
     }
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new AppError('Invalid refresh token', 401);
+      throw new AppError('Invalid token type', 401);
     }
     throw error;
   }

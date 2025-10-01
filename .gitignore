@@ -1,0 +1,40 @@
+# Fichiers sensibles et logs
+server-output.log
+start-backend.sh
+*.log
+logs/
+
+# Dossiers de build
+dist/
+build/
+.cache/
+
+# Node modules
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts de test temporaires
+*test*.js
+*create-*.js
+*check-*.js
+*fix-*.js
+
+# Fichiers temporaires
+tmp/
+temp/
+*.tmp

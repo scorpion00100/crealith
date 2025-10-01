@@ -92,16 +92,147 @@ class EmailService {
       <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Vérification de votre email - Crealith</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #F9FAFB; background: #111827; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #1F2937; color: #F9FAFB; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #1F2937; padding: 30px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; background: #6366F1; color: #F9FAFB; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #9CA3AF; font-size: 14px; }
-          .muted { color: #9CA3AF; }
-          .code { word-break: break-all; background: #111827; color: #F9FAFB; padding: 10px; border-radius: 4px; border: 1px solid #374151; }
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+          
+          body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            line-height: 1.6; 
+            color: #1F2937; 
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            margin: 0;
+            padding: 20px;
+          }
+          
+          .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+          }
+          
+          .header { 
+            background: linear-gradient(135deg, #6366F1 0%, #EC4899 100%);
+            color: white; 
+            padding: 40px 30px; 
+            text-align: center; 
+          }
+          
+          .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            letter-spacing: -0.025em;
+          }
+          
+          .header p {
+            font-size: 16px;
+            opacity: 0.9;
+            margin: 0;
+            font-weight: 400;
+          }
+          
+          .content { 
+            padding: 40px 30px; 
+            color: #374151;
+          }
+          
+          .content h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1F2937;
+            margin: 0 0 16px 0;
+            letter-spacing: -0.025em;
+          }
+          
+          .content p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 0 0 16px 0;
+            color: #4B5563;
+          }
+          
+          .button { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #6366F1 0%, #5B5BD6 100%);
+            color: white; 
+            padding: 16px 32px; 
+            text-decoration: none; 
+            border-radius: 12px; 
+            margin: 24px 0; 
+            font-weight: 600;
+            font-size: 16px;
+            text-align: center;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+          }
+          
+          .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px 0 rgba(99, 102, 241, 0.4);
+          }
+          
+          .footer { 
+            text-align: center; 
+            padding: 30px;
+            background: #F9FAFB;
+            border-top: 1px solid #E5E7EB;
+            color: #6B7280; 
+            font-size: 14px; 
+          }
+          
+          .success { 
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+            border: 1px solid #10B981;
+            padding: 20px; 
+            border-radius: 12px; 
+            margin: 24px 0; 
+            color: #065F46;
+          }
+          
+          .success p {
+            margin: 0 0 12px 0;
+            font-weight: 600;
+            color: #065F46;
+          }
+          
+          .muted { 
+            color: #6B7280; 
+            font-size: 14px;
+          }
+          
+          .code { 
+            word-break: break-all; 
+            background: #F3F4F6; 
+            color: #1F2937; 
+            padding: 12px; 
+            border-radius: 8px; 
+            border: 1px solid #D1D5DB;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            margin: 16px 0;
+          }
+          
+          .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #E5E7EB, transparent);
+            margin: 24px 0;
+          }
+          
+          @media (max-width: 600px) {
+            body { padding: 10px; }
+            .header { padding: 30px 20px; }
+            .content { padding: 30px 20px; }
+            .footer { padding: 20px; }
+            .header h1 { font-size: 28px; }
+            .content h2 { font-size: 20px; }
+          }
         </style>
       </head>
       <body>
@@ -112,15 +243,35 @@ class EmailService {
           </div>
           <div class="content">
             <h2>Bonjour ${firstName} !</h2>
-            <p class="muted">Merci de vous être inscrit sur Crealith. Pour activer votre compte, veuillez cliquer sur le bouton ci-dessous :</p>
-            <a href="${verificationUrl}" class="button">Vérifier mon email</a>
-            <p class="muted">Ou copiez ce lien dans votre navigateur :</p>
-            <p class="code">${verificationUrl}</p>
+            <p>Merci de vous être inscrit sur Crealith. Pour activer votre compte et commencer à explorer notre plateforme, veuillez cliquer sur le bouton ci-dessous :</p>
+            
+            <div style="text-align: center;">
+              <a href="${verificationUrl}" class="button">Vérifier mon email</a>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <p class="muted">Ou copiez et collez ce lien dans votre navigateur :</p>
+            <div class="code">${verificationUrl}</div>
+            
+            <div class="success">
+              <p>✅ Bienvenue sur Crealith !</p>
+              <p>Une fois votre email vérifié, vous pourrez :</p>
+              <ul style="margin: 0; padding-left: 20px; color: #065F46;">
+                <li>Accéder à tous nos templates et ressources</li>
+                <li>Créer et vendre vos propres créations</li>
+                <li>Rejoindre notre communauté créative</li>
+              </ul>
+            </div>
+            
             <p><strong>Ce lien expire dans 24 heures.</strong></p>
             <p class="muted">Si vous n'avez pas créé de compte sur Crealith, vous pouvez ignorer cet email.</p>
           </div>
           <div class="footer">
             <p>© 2025 Crealith. Tous droits réservés.</p>
+            <p style="margin-top: 8px; font-size: 12px; color: #9CA3AF;">
+              Cet email a été envoyé automatiquement, merci de ne pas y répondre.
+            </p>
           </div>
         </div>
       </body>
@@ -130,14 +281,21 @@ class EmailService {
     const text = `
       Bonjour ${firstName} !
       
-      Merci de vous être inscrit sur Crealith. Pour activer votre compte, veuillez cliquer sur ce lien :
+      Merci de vous être inscrit sur Crealith. Pour activer votre compte et commencer à explorer notre plateforme, veuillez cliquer sur ce lien :
       ${verificationUrl}
+      
+      Une fois votre email vérifié, vous pourrez :
+      - Accéder à tous nos templates et ressources
+      - Créer et vendre vos propres créations
+      - Rejoindre notre communauté créative
       
       Ce lien expire dans 24 heures.
       
       Si vous n'avez pas créé de compte sur Crealith, vous pouvez ignorer cet email.
       
       © 2025 Crealith. Tous droits réservés.
+      
+      Cet email a été envoyé automatiquement, merci de ne pas y répondre.
     `;
 
     await this.sendEmail({
@@ -159,42 +317,44 @@ class EmailService {
       <html>
       <head>
         <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Réinitialisation de votre mot de passe - Crealith</title>
         <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #F9FAFB; background: #111827; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: #1F2937; color: #F9FAFB; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #1F2937; padding: 30px; border-radius: 0 0 8px 8px; }
-          .button { display: inline-block; background: #6366F1; color: #F9FAFB; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #9CA3AF; font-size: 14px; }
-          .warning { background: #111827; border: 1px solid #374151; padding: 15px; border-radius: 6px; margin: 20px 0; color: #F9FAFB; }
-          .muted { color: #9CA3AF; }
-          .code { word-break: break-all; background: #111827; color: #F9FAFB; padding: 10px; border-radius: 4px; border: 1px solid #374151; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif; background: #F9FAFB; margin: 0; padding: 16px; color: #111827; }
+          .container { max-width: 600px; margin: 0 auto; background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 12px; overflow: hidden; }
+          .header { padding: 24px; border-bottom: 1px solid #E5E7EB; }
+          .brand { display: inline-flex; align-items: center; gap: 10px; }
+          .brand-badge { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #6366F1 0%, #EC4899 100%); color: #FFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; }
+          .brand-name { font-size: 18px; font-weight: 800; color: #111827; letter-spacing: -0.02em; }
+          .content { padding: 24px; }
+          h1 { font-size: 22px; margin: 0 0 12px 0; }
+          p { font-size: 15px; margin: 0 0 12px 0; color: #374151; }
+          .button { display: inline-block; margin: 16px 0; background: #6366F1; color: #FFF; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; }
+          .link { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; background: #F3F4F6; color: #111827; padding: 10px; border-radius: 8px; border: 1px solid #E5E7EB; }
+          .footer { padding: 20px; border-top: 1px solid #E5E7EB; color: #6B7280; font-size: 12px; text-align: center; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h1>Crealith</h1>
-            <p>Réinitialisation de votre mot de passe</p>
-          </div>
-          <div class="content">
-            <h2 style="margin:0 0 10px 0;">Bonjour ${firstName} !</h2>
-            <p style="margin:0 0 10px 0; color:#F9FAFB;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
-            <a href="${resetUrl}" class="button">Réinitialiser mon mot de passe</a>
-            <p style="margin:10px 0; color:#F9FAFB;">Ou copiez ce lien dans votre navigateur :</p>
-            <p class="code">${resetUrl}</p>
-            <div class="warning">
-              <p><strong>Important :</strong></p>
-              <ul>
-                <li>Ce lien expire dans 30 minutes</li>
-                <li>Si vous n'avez pas demandé cette réinitialisation, ignorez cet email</li>
-                <li>Votre mot de passe actuel reste valide jusqu'à ce que vous le changiez</li>
-              </ul>
+            <div class="brand">
+              <div class="brand-badge">C</div>
+              <div class="brand-name">Crealith</div>
             </div>
           </div>
+          <div class="content">
+            <h1>Réinitialiser votre mot de passe</h1>
+            <p>Bonjour ${firstName},</p>
+            <p>Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci‑dessous pour créer un nouveau mot de passe sécurisé.</p>
+            <p style="text-align:center;">
+              <a href="${resetUrl}" class="button">Réinitialiser mon mot de passe</a>
+            </p>
+            <p>Ou copiez ce lien dans votre navigateur :</p>
+            <p class="link">${resetUrl}</p>
+            <p style="color:#6B7280; font-size:13px;">Ce lien expirera dans 30 minutes. Si vous n’êtes pas à l’origine de cette demande, ignorez cet email.</p>
+          </div>
           <div class="footer">
-            <p>© 2025 Crealith. Tous droits réservés.</p>
+            © 2025 Crealith — Email automatique, ne pas répondre.
           </div>
         </div>
       </body>
@@ -204,15 +364,18 @@ class EmailService {
     const text = `
       Bonjour ${firstName} !
       
-      Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur ce lien pour créer un nouveau mot de passe :
+      Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur ce lien pour créer un nouveau mot de passe sécurisé :
       ${resetUrl}
       
-      Ce lien expire dans 30 minutes.
-      
-      Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.
-      Votre mot de passe actuel reste valide jusqu'à ce que vous le changiez.
+      IMPORTANT :
+      - Ce lien expire dans 30 minutes pour votre sécurité
+      - Si vous n'avez pas demandé cette réinitialisation, ignorez cet email
+      - Votre mot de passe actuel reste valide jusqu'à ce que vous le changiez
+      - Pour votre sécurité, nous vous déconnecterons de tous vos appareils
       
       © 2025 Crealith. Tous droits réservés.
+      
+      Cet email a été envoyé automatiquement, merci de ne pas y répondre.
     `;
 
     await this.sendEmail({

@@ -11,7 +11,6 @@ import {
     MessageSquare
 } from 'lucide-react';
 import { Sidebar } from '@/components/marketplace/Sidebar';
-import { SearchBar } from '@/components/marketplace/SearchBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
@@ -20,6 +19,7 @@ import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesS
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/utils/cn';
 import { fetchProducts } from '@/store/slices/productSlice';
+import { ProductGrid } from '@/components/ui/ProductGrid';
 
 // Données mock pour le MVP
 const mockStats = {
@@ -30,17 +30,7 @@ const mockStats = {
     recentActivity: 0
 };
 
-const mockRecentPurchases = [
-    {
-        id: '1',
-        title: 'Template PowerPoint Moderne',
-        price: 15.99,
-        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM2MzY2RjEiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNFQzQ4OTkiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2cpIi8+PHRleHQgeD0iNTAlIiB5PSI0MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI2MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PHRleHQgeD0iNTAlIiB5PSI4MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiPk1vZGVybmU8L3RleHQ+PC9zdmc+',
-        purchaseDate: '2025-01-08',
-        downloads: 2,
-        rating: 4.8
-    }
-];
+const mockRecentPurchases: any[] = [];
 
 // Produits recommandés façon Etsy Digital
 const mockRecommendedProducts = [
@@ -130,8 +120,6 @@ const BuyerDashboardPage: React.FC = () => {
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isSearching, setIsSearching] = useState(false);
-    const [results, setResults] = useState<any[]>([]);
 
     // Charger les données au montage
     useEffect(() => {
@@ -193,17 +181,10 @@ const BuyerDashboardPage: React.FC = () => {
         }
     };
 
-    const handleSearch = (query: string) => {
-        setIsSearching(true);
-        setSearchQuery(query);
-        window.setTimeout(() => {
-            const q = query.toLowerCase();
-            const filtered = (results.length ? results : mockRecommendedProducts).filter((p: any) =>
-                (p.title || p.name || '').toLowerCase().includes(q)
-            );
-            setResults(filtered);
-            setIsSearching(false);
-        }, 400);
+    const triggerSearch = () => {
+        const q = (searchQuery || '').trim();
+        if (!q) return;
+        navigate(`/catalog?search=${encodeURIComponent(q)}`);
     };
 
     const formatPrice = (price: number) => {
@@ -225,7 +206,7 @@ const BuyerDashboardPage: React.FC = () => {
                 <div className="p-3 bg-primary-500/15 rounded-xl">
                     <Icon className="w-6 h-6 text-primary-400" />
                 </div>
-                {change && (
+                {change && typeof value === 'number' && value > 0 && (
                     <span className={cn(
                         'text-xs md:text-sm font-medium px-2 py-1 rounded-full',
                         trend === 'up' && 'text-success-400 bg-success-500/15',
@@ -257,7 +238,11 @@ const BuyerDashboardPage: React.FC = () => {
                             target.style.display = 'none';
                             const parent = target.parentElement;
                             if (parent) {
-                                parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-xs text-center">${purchase.title.split(' ')[0]}</div>`;
+                                parent.innerHTML = `
+                                  <div class="w-full h-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center">
+                                    <div class="text-white text-xl" aria-hidden="true">📦</div>
+                                  </div>
+                                `;
                             }
                         }}
                     />
@@ -322,7 +307,6 @@ const BuyerDashboardPage: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <SearchBar className="hidden md:block" onSearch={handleSearch} />
                                 <button
                                     onClick={() => navigate('/favorites')}
                                     className="px-3 py-2 rounded-lg bg-background-700 text-text-200 hover:bg-background-600"
@@ -362,9 +346,14 @@ const BuyerDashboardPage: React.FC = () => {
                                         type="text"
                                         placeholder="Rechercher des produits, designers, catégories..."
                                         className="w-full pl-12 pr-4 py-4 bg-background-800 border border-background-600 rounded-xl text-text-100 placeholder-text-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        onChange={(e) => handleSearch(e.target.value)}
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); triggerSearch(); } }}
                                     />
-                                    <button className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors">
+                                    <button
+                                        onClick={triggerSearch}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                                    >
                                         Rechercher
                                     </button>
                                 </div>
@@ -399,7 +388,7 @@ const BuyerDashboardPage: React.FC = () => {
                             </div>
                         </section>
 
-                        {/* Produits recommandés - Style Etsy */}
+                        {/* Produits recommandés - Style Etsy (issus de l'API) */}
                         <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
@@ -415,74 +404,13 @@ const BuyerDashboardPage: React.FC = () => {
                                 </button>
                             </div>
 
-                            {/* Grille de produits */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {mockRecommendedProducts.map((product) => (
-                                    <div key={product.id} className="group bg-background-700 rounded-xl border border-background-600 overflow-hidden hover:border-primary-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/10">
-                                        <div className="aspect-square bg-background-600 relative overflow-hidden">
-                                            <img
-                                                src={product.image}
-                                                alt={product.title}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                                onError={(e) => {
-                                                    // Fallback si l'image ne charge pas
-                                                    const target = e.target as HTMLImageElement;
-                                                    target.style.display = 'none';
-                                                    const parent = target.parentElement;
-                                                    if (parent) {
-                                                        parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-sm text-center p-2">${product.title.split(' ')[0]}</div>`;
-                                                    }
-                                                }}
-                                            />
-                                            <button
-                                                onClick={() => handleToggleFavorite(product)}
-                                                className="absolute top-3 right-3 p-2 bg-background-800/80 hover:bg-background-700 rounded-full transition-colors"
-                                            >
-                                                <Heart className={cn(
-                                                    "w-4 h-4",
-                                                    isFavorite(product.id) ? "text-secondary-400 fill-secondary-400" : "text-text-400"
-                                                )} />
-                                            </button>
-                                            {product.originalPrice && (
-                                                <div className="absolute top-3 left-3 px-2 py-1 bg-error-500 text-white text-xs font-bold rounded">
-                                                    -{Math.round((1 - product.price / product.originalPrice) * 100)}%
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="font-medium text-text-100 mb-2 group-hover:text-primary-400 transition-colors overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                {product.title}
-                                            </h3>
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-1">
-                                                    <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                                                    <span className="text-sm text-text-400">{product.rating}</span>
-                                                    <span className="text-sm text-text-400">({product.reviews})</span>
-                                                </div>
-                                                <div className="text-right">
-                                                    <span className="text-lg font-bold text-primary-400">
-                                                        {formatPrice(product.price)}
-                                                    </span>
-                                                    {product.originalPrice && (
-                                                        <span className="block text-sm text-text-400 line-through">
-                                                            {formatPrice(product.originalPrice)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => {
-                                                    console.log('🖱️ Bouton cliqué pour produit:', product.title);
-                                                    handleAddToCart(product);
-                                                }}
-                                                className="w-full py-2 px-4 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors font-medium group-hover:shadow-md"
-                                            >
-                                                Ajouter au panier
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            {/* Grille de produits (API) */}
+                            <ProductGrid
+                                products={useAppSelector((s) => s.products.items).slice(0, 8) as any}
+                                cardVariant="minimal"
+                                onView={(id) => navigate(`/product/${id}`)}
+                                onToggleFavorite={(id) => handleToggleFavorite({ id })}
+                            />
                         </section>
 
                         {/* Stats et activité récente */}
@@ -526,19 +454,33 @@ const BuyerDashboardPage: React.FC = () => {
                             <section className="bg-background-800 rounded-2xl border border-background-700 p-6">
                                 <div className="flex items-center justify-between mb-6">
                                     <h2 className="text-xl font-bold text-text-100">Achats récents</h2>
-                                    <button
-                                        onClick={() => navigate('/downloads')}
-                                        className="text-primary-400 hover:text-primary-300 text-sm font-medium flex items-center gap-1 transition-colors"
-                                    >
-                                        Voir tout
-                                        <ArrowRight className="w-4 h-4" />
-                                    </button>
+                                    {mockRecentPurchases.length > 0 && (
+                                        <button
+                                            onClick={() => navigate('/downloads')}
+                                            className="text-primary-400 hover:text-primary-300 text-sm font-medium flex items-center gap-1 transition-colors"
+                                        >
+                                            Voir tout
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
-                                <div className="space-y-4">
-                                    {mockRecentPurchases.map((purchase) => (
-                                        <RecentPurchaseCard key={purchase.id} purchase={purchase} />
-                                    ))}
-                                </div>
+                                {mockRecentPurchases.length === 0 ? (
+                                    <div className="text-center text-text-400 py-8">
+                                        <p className="mb-4">Vous n'avez encore aucun achat.</p>
+                                        <button
+                                            onClick={() => navigate('/catalog')}
+                                            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors"
+                                        >
+                                            Parcourir le catalogue
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {mockRecentPurchases.map((purchase) => (
+                                            <RecentPurchaseCard key={purchase.id} purchase={purchase} />
+                                        ))}
+                                    </div>
+                                )}
                             </section>
                         </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { authService } from '@/services/auth.service';
 import { useAppDispatch } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
 import {
@@ -26,7 +27,7 @@ import {
 export const ProfilePage: React.FC = () => {
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, refreshProfile } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -62,7 +63,7 @@ export const ProfilePage: React.FC = () => {
                 bio: user.bio || '',
                 location: '',
                 website: '',
-                avatar: ''
+                avatar: (user as any).avatar || ''
             });
             setAvatarFile(null);
             setAvatarPreview(null);
@@ -80,10 +81,21 @@ export const ProfilePage: React.FC = () => {
     const handleSave = async () => {
         setIsLoading(true);
         try {
-            // Simuler la sauvegarde
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            // 1) Envoi au backend des champs supportés
+            const updated = await authService.updateProfile({
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                bio: formData.bio || undefined,
+                avatar: formData.avatar ? formData.avatar : null,
+            });
 
-            // TODO(API): uploader avatarFile vers le backend et mettre à jour l'URL d'avatar utilisateur
+            // 2) Optionnel: upload avatarFile (non implémenté ici)
+            // TODO: si on implémente l'upload, récupérer une URL et refaire updateProfile({ avatar: url })
+
+            // 3) Rafraîchir le profil global pour que tout le front voie la mise à jour
+            // useAuth expose refreshProfile
+            // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+            refreshProfile();
 
             dispatch(addNotification({
                 type: 'success',
@@ -92,10 +104,10 @@ export const ProfilePage: React.FC = () => {
             }));
 
             setIsEditing(false);
-        } catch (error) {
+        } catch (error: any) {
             dispatch(addNotification({
                 type: 'error',
-                message: 'Erreur lors de la mise à jour du profil',
+                message: error?.message || 'Erreur lors de la mise à jour du profil',
                 duration: 4000
             }));
         } finally {
@@ -113,7 +125,7 @@ export const ProfilePage: React.FC = () => {
                 bio: user.bio || '',
                 location: '',
                 website: '',
-                avatar: ''
+                avatar: (user as any).avatar || ''
             });
             setAvatarFile(null);
             setAvatarPreview(null);
@@ -196,6 +208,16 @@ export const ProfilePage: React.FC = () => {
                                     >
                                         <Camera className="w-5 h-5 text-white" />
                                     </button>
+                                    {(avatarPreview || formData.avatar) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setAvatarFile(null); setAvatarPreview(null); setFormData(prev => ({ ...prev, avatar: '' })); }}
+                                            className="absolute bottom-0 left-0 w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center shadow-lg hover:bg-rose-600 transition-colors duration-300"
+                                            aria-label="Supprimer l'avatar"
+                                        >
+                                            <X className="w-5 h-5 text-white" />
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>

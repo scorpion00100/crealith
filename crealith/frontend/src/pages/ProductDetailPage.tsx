@@ -8,6 +8,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { Star, Download, Heart, Share2, Eye, ShoppingCart } from 'lucide-react';
 import { reviewService, ReviewItem } from '@/services/review.service';
+import { analyticsService } from '@/services/analytics.service';
+import { productService } from '@/services/product.service';
+import { setCurrentProduct } from '@/store/slices/productSlice';
+import '../styles/pages/product-detail.css'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 export const ProductDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -16,17 +21,41 @@ export const ProductDetailPage: React.FC = () => {
     const { user, isAuthenticated } = useAuth();
 
     const { currentProduct, isLoading } = useAppSelector(state => state.products);
+    const allProducts = useAppSelector(state => state.products.items);
+    const { cart } = useAppSelector((state: any) => ({ cart: state.cart }));
     const [selectedImage, setSelectedImage] = useState(0);
     const [isFavorite, setIsFavorite] = useState(false);
     const [showFullDescription, setShowFullDescription] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'details'>('overview');
     const [topReviews, setTopReviews] = useState<ReviewItem[]>([]);
+    const [newRating, setNewRating] = useState<number>(0);
+    const [newComment, setNewComment] = useState<string>('');
+    const [isSubmittingReview, setIsSubmittingReview] = useState<boolean>(false);
+    const [fallbackPending, setFallbackPending] = useState<boolean>(false);
 
     useEffect(() => {
         if (id) {
             dispatch(fetchProductById(id));
         }
     }, [id, dispatch]);
+
+    // Backend fallback fetch on refresh if product missing
+    useEffect(() => {
+        (async () => {
+            if (!id) return;
+            if (currentProduct) return;
+            try {
+                setFallbackPending(true);
+                const fromApi = await productService.getProductById(id);
+                if (fromApi) {
+                    dispatch(setCurrentProduct(fromApi));
+                }
+            } catch { }
+            finally {
+                setFallbackPending(false);
+            }
+        })();
+    }, [id, currentProduct, dispatch]);
 
     useEffect(() => {
         (async () => {
@@ -41,7 +70,39 @@ export const ProductDetailPage: React.FC = () => {
         })();
     }, [id]);
 
+    // Sync recently viewed with backend when authenticated
+    useEffect(() => {
+        (async () => {
+            if (!currentProduct?.id) return;
+            if (!isAuthenticated) return;
+            try {
+                await analyticsService.addRecentlyViewed(currentProduct.id);
+            } catch { }
+        })();
+    }, [currentProduct?.id, isAuthenticated]);
+
+    useEffect(() => {
+        // Scroll to top when navigating to a product detail
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    }, [id]);
+
+    useEffect(() => {
+        // After loading completes and product is set, ensure we're at the top
+        if (!isLoading && !fallbackPending) {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
+    }, [isLoading, fallbackPending]);
+
     const handleAddToCart = async () => {
+        if (!currentProduct || !id) {
+            dispatch(addNotification({
+                type: 'error',
+                message: 'Produit non trouvé',
+                duration: 3000
+            }));
+            return;
+        }
+
         if (!isAuthenticated) {
             dispatch(addNotification({
                 type: 'warning',
@@ -53,9 +114,9 @@ export const ProductDetailPage: React.FC = () => {
         }
 
         try {
-            await dispatch(addToCartAsync({ productId: id!, quantity: 1 })).unwrap();
-            // Synchroniser le panier après l'ajout
+            await dispatch(addToCartAsync({ productId: id, quantity: 1 })).unwrap();
             await dispatch(fetchCart()).unwrap();
+
             dispatch(addNotification({
                 type: 'success',
                 message: 'Produit ajouté au panier !',
@@ -114,27 +175,44 @@ export const ProductDetailPage: React.FC = () => {
 
     const handleDownload = () => {
         if (!isAuthenticated) {
-            dispatch(addNotification({
-                type: 'warning',
-                message: 'Connectez-vous pour télécharger',
-                duration: 4000
-            }));
+            dispatch(addNotification({ type: 'warning', message: 'Connectez-vous pour télécharger', duration: 4000 }));
             navigate('/login?redirect=' + window.location.pathname);
             return;
         }
 
-        // Vérifier si l'utilisateur a acheté le produit
-        if (!currentProduct?.hasPurchased) {
-            dispatch(addNotification({
-                type: 'warning',
-                message: 'Vous devez acheter ce produit pour le télécharger',
-                duration: 4000
-            }));
+        if (!currentProduct) {
+            dispatch(addNotification({ type: 'error', message: 'Produit introuvable', duration: 3000 }));
             return;
         }
 
-        // Télécharger le fichier
-        window.open(currentProduct.fileUrl, '_blank');
+        if (!currentProduct.hasPurchased) {
+            // Rediriger vers le paiement: si déjà au panier, aller checkout, sinon ajouter puis checkout
+            const alreadyInCart = cart.items?.some((it: any) => it.productId === currentProduct.id);
+            const goCheckout = () => navigate('/checkout');
+            if (alreadyInCart) {
+                dispatch(addNotification({ type: 'info', message: 'Le produit est dans votre panier', duration: 2500 }));
+                goCheckout();
+                return;
+            }
+            (async () => {
+                try {
+                    await dispatch(addToCartAsync({ productId: currentProduct.id, quantity: 1 })).unwrap();
+                    await dispatch(fetchCart()).unwrap();
+                    dispatch(addNotification({ type: 'success', message: 'Ajouté au panier, redirection vers le paiement', duration: 2500 }));
+                    goCheckout();
+                } catch (e: any) {
+                    dispatch(addNotification({ type: 'error', message: e?.message || 'Impossible d\'ajouter au panier', duration: 3000 }));
+                }
+            })();
+            return;
+        }
+
+        // Télécharger le fichier si acheté
+        if (currentProduct.fileUrl) {
+            window.open(currentProduct.fileUrl, '_blank');
+        } else {
+            dispatch(addNotification({ type: 'error', message: 'Fichier indisponible', duration: 3000 }));
+        }
     };
 
     const handleShare = () => {
@@ -154,13 +232,116 @@ export const ProductDetailPage: React.FC = () => {
         }
     };
 
-    if (isLoading) {
+    const handleLeaveReview = () => {
+        if (!isAuthenticated) {
+            dispatch(addNotification({ type: 'warning', message: 'Connectez-vous pour laisser un avis', duration: 3000 }));
+            navigate('/login?redirect=' + window.location.pathname);
+            return;
+        }
+        if (!currentProduct?.hasPurchased) {
+            dispatch(addNotification({ type: 'warning', message: 'Vous devez acheter le produit pour laisser un avis', duration: 3000 }));
+            return;
+        }
+        navigate(`/my-reviews?product=${id}`);
+    };
+
+    const handleSubmitReview = async () => {
+        if (!isAuthenticated) {
+            dispatch(addNotification({ type: 'warning', message: 'Connectez-vous pour laisser un avis', duration: 3000 }));
+            navigate('/login?redirect=' + window.location.pathname);
+            return;
+        }
+        if (!currentProduct?.hasPurchased) {
+            dispatch(addNotification({ type: 'warning', message: 'Vous devez acheter le produit pour laisser un avis', duration: 3000 }));
+            return;
+        }
+        if (!newRating) {
+            dispatch(addNotification({ type: 'warning', message: 'Veuillez choisir une note', duration: 2500 }));
+            return;
+        }
+        try {
+            setIsSubmittingReview(true);
+            await reviewService.createReview(currentProduct.id, newRating, newComment);
+            setNewRating(0);
+            setNewComment('');
+            dispatch(addNotification({ type: 'success', message: 'Avis publié', duration: 2500 }));
+            // Recharger un extrait d'avis
+            if (id) {
+                const data = await reviewService.getProductReviews(id, 1, 5);
+                setTopReviews(data.reviews || []);
+            }
+        } catch (e: any) {
+            dispatch(addNotification({ type: 'error', message: e?.message || 'Erreur lors de la publication', duration: 3000 }));
+        } finally {
+            setIsSubmittingReview(false);
+        }
+    };
+
+    const scrollToReviews = () => {
+        setActiveTab('reviews');
+        setTimeout(() => {
+            const el = document.getElementById('reviews-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+    };
+
+    const similarProducts = (currentProduct && allProducts.length)
+        ? allProducts
+            .filter(p => p.id !== currentProduct.id && p.category?.slug === currentProduct.category?.slug)
+            .slice(0, 12)
+        : [];
+
+    // Recently viewed tracking
+    const RECENT_KEY = 'crealith_recently_viewed';
+    useEffect(() => {
+        if (!currentProduct?.id) return;
+        try {
+            const raw = localStorage.getItem(RECENT_KEY);
+            const list: string[] = raw ? JSON.parse(raw) : [];
+            const filtered = [currentProduct.id, ...list.filter((x) => x !== currentProduct.id)].slice(0, 12);
+            localStorage.setItem(RECENT_KEY, JSON.stringify(filtered));
+        } catch { }
+    }, [currentProduct?.id]);
+
+    const getRecentlyViewed = (): typeof allProducts => {
+        try {
+            const raw = localStorage.getItem(RECENT_KEY);
+            const ids: string[] = raw ? JSON.parse(raw) : [];
+            const map = new Map(allProducts.map(p => [p.id, p] as const));
+            return ids.map(id => map.get(id)).filter(Boolean) as any;
+        } catch {
+            return [] as any;
+        }
+    };
+
+    // Build carousel list: prefer similar; fallback to recently viewed
+    const baseCarousel = similarProducts.length > 0 ? similarProducts : getRecentlyViewed().filter(p => p.id !== currentProduct?.id);
+
+    // Loop/duplicate items if fewer than 6 to make carousel feel rich
+    const buildLooped = (items: typeof allProducts, minLen = 6, maxLen = 12) => {
+        if (items.length === 0) return [] as typeof allProducts;
+        if (items.length >= minLen) return items.slice(0, maxLen);
+        const out: any[] = [];
+        let i = 0;
+        while (out.length < minLen) {
+            out.push(items[i % items.length]);
+            i++;
+        }
+        return out.slice(0, maxLen);
+    };
+
+    const carouselItems = buildLooped(baseCarousel);
+
+    const scrollSimilar = (direction: 'left' | 'right') => {
+        const scroller = document.getElementById('similar-scroller');
+        if (scroller) scroller.scrollBy({ left: direction === 'left' ? -360 : 360, behavior: 'smooth' });
+    };
+
+    if (isLoading || fallbackPending) {
         return (
             <div className="product-detail-page">
-                <div className="container">
-                    <div className="loading-container">
-                        <div className="loading-spinner">Chargement du produit...</div>
-                    </div>
+                <div className="product-detail-container" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <LoadingSpinner text="Chargement du produit..." />
                 </div>
             </div>
         );
@@ -192,46 +373,32 @@ export const ProductDetailPage: React.FC = () => {
     const totalReviews = currentProduct.totalReviews || currentProduct.reviewCount || 0;
 
     return (
-        <div className="product-detail-page">
-            <div className="container">
-                {/* Breadcrumb */}
-                <nav className="breadcrumb">
-                    <a href="/">Accueil</a>
-                    <span>/</span>
-                    <a href="/catalog">Catalogue</a>
-                    <span>/</span>
-                    <a href={`/catalog?category=${currentProduct.category?.slug}`}>
-                        {currentProduct.category?.name}
-                    </a>
-                    <span>/</span>
-                    <span>{currentProduct.title}</span>
-                </nav>
+        <div className="product-detail-page animate-in-down">
+            <div className="product-detail-container">
+                {/* Breadcrumb removed per request */}
 
-                <div className="product-detail-content">
+                <div className="product-detail-layout">
                     {/* Galerie d'images */}
-                    <div className="product-gallery">
-                        <div className="main-image">
+                    <div className="product-gallery animate-in-down" style={{ animationDelay: '60ms' }}>
+                        <div className="gallery-main">
                             <img
                                 src={images[selectedImage] || currentProduct.thumbnailUrl}
                                 alt={currentProduct.title}
-                                className="product-image"
+                                className="gallery-main-image"
                             />
-                            <div className="image-overlay">
+                            <div className="gallery-zoom-overlay">
                                 <button className="btn-icon" onClick={handleShare}>
                                     <Share2 size={20} />
-                                </button>
-                                <button className="btn-icon" onClick={handleToggleFavorite}>
-                                    <Heart size={20} className={isFavorite ? 'filled' : ''} />
                                 </button>
                             </div>
                         </div>
 
                         {images.length > 1 && (
-                            <div className="image-thumbnails">
+                            <div className="gallery-thumbnails">
                                 {images.map((image, index) => (
                                     <button
                                         key={index}
-                                        className={`thumbnail ${selectedImage === index ? 'active' : ''}`}
+                                        className={`gallery-thumbnail ${selectedImage === index ? 'active' : ''}`}
                                         onClick={() => setSelectedImage(index)}
                                     >
                                         <img src={image} alt={`Vue ${index + 1}`} />
@@ -242,256 +409,272 @@ export const ProductDetailPage: React.FC = () => {
                     </div>
 
                     {/* Informations produit */}
-                    <div className="product-info">
+                    <div className="product-info animate-in-down" style={{ animationDelay: '120ms' }}>
                         <div className="product-header">
+                            <div className="product-category">
+                                {currentProduct.category?.name}
+                            </div>
                             <h1 className="product-title">{currentProduct.title}</h1>
-                            <div className="product-meta">
-                                <div className="product-author">
-                                    par{' '}
-                                    <a href={`/profile/${currentProduct.user?.id}`}>
-                                        {currentProduct.user?.firstName} {currentProduct.user?.lastName}
-                                    </a>
+                            <div className="product-author">
+                                <div className="author-avatar">
+                                    {(currentProduct.user?.firstName?.[0] || '')}{(currentProduct.user?.lastName?.[0] || '')}
                                 </div>
-                                <div className="product-category">
-                                    dans <a href={`/catalog?category=${currentProduct.category?.slug}`}>
-                                        {currentProduct.category?.name}
-                                    </a>
+                                <div className="author-info">
+                                    <div className="author-name">
+                                        par <button type="button" className="btn-link" onClick={() => navigate(`/profile/${currentProduct.user?.id}`)}>{currentProduct.user?.firstName} {currentProduct.user?.lastName}</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Rating et reviews */}
-                        <div className="product-rating">
-                            <div className="stars">
+                        <div className="product-rating" role="button" onClick={scrollToReviews} title="Voir les avis" style={{ cursor: 'pointer' }}>
+                            <div className="rating-stars">
                                 {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                        key={star}
-                                        size={20}
-                                        className={star <= averageRating ? 'filled' : 'empty'}
-                                    />
+                                    <span key={star} className={`rating-star ${star <= averageRating ? 'filled' : ''}`}>★</span>
                                 ))}
                             </div>
-                            <span className="rating-text">
-                                {averageRating.toFixed(1)} ({totalReviews} avis)
-                            </span>
+                            <span className="rating-value">{averageRating.toFixed(1)}</span>
+                            <span className="rating-count">({totalReviews} avis)</span>
+                        </div>
+                        <div className="text-sm" style={{ marginTop: '-0.25rem' }}>
+                            <button className="btn-link" onClick={scrollToReviews}>Voir les avis</button>
                         </div>
 
                         {/* Prix */}
                         <div className="product-pricing">
+                            <div className="price-row">
+                                <span className="price-label">Prix actuel</span>
+                                <span className="price-current">{currentProduct.price} €</span>
+                            </div>
                             {currentProduct.originalPrice && (
-                                <span className="original-price">
-                                    {currentProduct.originalPrice} €
-                                </span>
-                            )}
-                            <span className="current-price">{currentProduct.price} €</span>
-                            {currentProduct.originalPrice && (
-                                <span className="discount">
-                                    -{Math.round(((parseFloat(currentProduct.originalPrice) - parseFloat(currentProduct.price)) / parseFloat(currentProduct.originalPrice)) * 100)}%
-                                </span>
+                                <>
+                                    <div className="price-row">
+                                        <span className="price-label">Prix d'origine</span>
+                                        <span className="price-original">{currentProduct.originalPrice} €</span>
+                                    </div>
+                                    <div className="price-row">
+                                        <span className="price-label">Réduction</span>
+                                        <span className="price-discount">
+                                            -{Math.round(((parseFloat(currentProduct.originalPrice) - parseFloat(currentProduct.price)) / parseFloat(currentProduct.originalPrice)) * 100)}%
+                                        </span>
+                                    </div>
+                                </>
                             )}
                         </div>
 
                         {/* Actions */}
                         <div className="product-actions">
-                            <button className="btn btn-primary btn-large" onClick={handleAddToCart}>
+                            <button className="action-button primary" onClick={handleAddToCart}>
                                 <ShoppingCart size={20} />
                                 Ajouter au panier
                             </button>
-                            <button className="btn btn-secondary btn-large" onClick={handleBuyNow}>
+                            <button className="action-button secondary" onClick={handleBuyNow}>
                                 Acheter maintenant
                             </button>
-                            {currentProduct.hasPurchased && (
-                                <button className="btn btn-outline" onClick={handleDownload}>
-                                    <Download size={20} />
-                                    Télécharger
-                                </button>
-                            )}
+                            <button
+                                className={`action-button favorite ${isFavorite ? 'active' : ''}`}
+                                onClick={handleToggleFavorite}
+                                aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                            >
+                                <Heart size={20} />
+                            </button>
                         </div>
-
-                        {/* Signaux de confiance */}
-                        <div className="product-stats">
-                            <div className="stat">
-                                <span className="stat-label">Téléchargements</span>
-                                <span className="stat-value">{currentProduct.downloadsCount?.toLocaleString()}</span>
-                            </div>
-                            <div className="stat">
-                                <span className="stat-label">Mise à jour</span>
-                                <span className="stat-value">
-                                    {currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}
-                                </span>
-                            </div>
-                            <div className="stat">
-                                <span className="stat-label">Ventes</span>
-                                <span className="stat-value">{currentProduct.totalSales?.toLocaleString()}</span>
-                            </div>
-                            <div className="stat">
-                                <span className="stat-label">Taille</span>
-                                <span className="stat-value">
-                                    {currentProduct.fileSize ? `${(currentProduct.fileSize / 1024 / 1024).toFixed(1)} MB` : 'N/A'}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Tags */}
-                        {currentProduct.tags && currentProduct.tags.length > 0 && (
-                            <div className="product-tags">
-                                {currentProduct.tags.map((tag, index) => (
-                                    <span key={index} className="tag">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
+                        {!currentProduct.hasPurchased && (
+                            <></>
                         )}
+
+                        {/* Signaux / stats */}
+                        <div className="product-details">
+                            <h3 className="details-title">Informations</h3>
+                            <div className="details-list">
+                                <div className="detail-item">
+                                    <span className="detail-label">Téléchargements</span>
+                                    <span className="detail-value">{currentProduct.downloadsCount?.toLocaleString()}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Mise à jour</span>
+                                    <span className="detail-value">{currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Ventes</span>
+                                    <span className="detail-value">{currentProduct.totalSales?.toLocaleString()}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Taille</span>
+                                    <span className="detail-value">{currentProduct.fileSize ? `${(currentProduct.fileSize / 1024 / 1024).toFixed(1)} MB` : 'N/A'}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Type de fichier</span>
+                                    <span className="detail-value">{currentProduct.fileType}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                {/* Onglets de contenu */}
-                <div className="product-tabs">
-                    <div className="tab-navigation">
+                {/* Description */}
+                <div className="product-description animate-in-down" style={{ animationDelay: '180ms' }}>
+                    <h3 className="description-title">Description</h3>
+                    <div className="description-content">
+                        <p>{currentProduct.description}</p>
+                    </div>
+                </div>
+
+                {/* Résumé */}
+                {currentProduct.shortDescription && (
+                    <div className="product-description animate-in-down" style={{ animationDelay: '200ms' }}>
+                        <h3 className="description-title">Résumé</h3>
+                        <div className="description-content">
+                            <p>{currentProduct.shortDescription}</p>
+                        </div>
+                    </div>
+                )}
+
+                {/* Avis */}
+                <div className="product-reviews animate-in-down" style={{ animationDelay: '220ms' }} id="reviews-section">
+                    <div className="reviews-header" onClick={scrollToReviews} style={{ cursor: 'pointer' }}>
+                        <h3 className="reviews-title">Avis</h3>
                         <button
-                            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('overview')}
+                            className="action-button secondary"
+                            style={{ width: 'auto', padding: '8px 12px', fontSize: '0.9rem' }}
+                            onClick={(e) => { e.stopPropagation(); handleLeaveReview(); }}
+                            title="Aller à la page de mes avis pour ce produit"
                         >
-                            Aperçu
-                        </button>
-                        <button
-                            className={`tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('reviews')}
-                        >
-                            Avis ({totalReviews})
-                        </button>
-                        <button
-                            className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('details')}
-                        >
-                            Détails
+                            Laisser un avis
                         </button>
                     </div>
 
-                    <div className="tab-content">
-                        {activeTab === 'overview' && (
-                            <div className="overview-tab">
-                                <div className="product-description">
-                                    <h3>Description</h3>
-                                    <div className={`description-content ${showFullDescription ? 'expanded' : ''}`}>
-                                        {currentProduct.description}
-                                    </div>
-                                    {currentProduct.description && currentProduct.description.length > 200 && (
-                                        <button
-                                            className="btn-link"
-                                            onClick={() => setShowFullDescription(!showFullDescription)}
-                                        >
-                                            {showFullDescription ? 'Voir moins' : 'Voir plus'}
-                                        </button>
-                                    )}
-                                </div>
+                    {/* Eligibility hint */}
+                    {(!isAuthenticated || !currentProduct?.hasPurchased) && (
+                        <div className="text-sm text-text-400" style={{ marginBottom: '0.75rem' }}>
+                            Vous devez être connecté et avoir acheté pour laisser un avis.
+                            {!isAuthenticated && (
+                                <>
+                                    {' '}<button className="btn-link" onClick={() => navigate('/login?redirect=' + window.location.pathname)}>Se connecter</button>
+                                </>
+                            )}
+                        </div>
+                    )}
 
-                                {currentProduct.shortDescription && (
-                                    <div className="product-short-description">
-                                        <h3>Résumé</h3>
-                                        <p>{currentProduct.shortDescription}</p>
-                                    </div>
-                                )}
+                    {/* Inline Review Form */}
+                    {(isAuthenticated && currentProduct?.hasPurchased) && (
+                        <div className="review-item" style={{ marginBottom: '1rem' }}>
+                            <div className="review-content">
+                                <div className="flex items-center gap-2 mb-3">
+                                    {[1, 2, 3, 4, 5].map(s => (
+                                        <button key={s} onClick={() => setNewRating(s)} className={s <= newRating ? 'text-yellow-400' : 'text-gray-600'} title={`${s} étoiles`}>★</button>
+                                    ))}
+                                </div>
+                                <textarea
+                                    value={newComment}
+                                    onChange={(e) => setNewComment(e.target.value)}
+                                    placeholder="Écrivez votre avis (optionnel)"
+                                    className="w-full bg-transparent border border-gray-700 rounded-xl p-3 text-gray-200"
+                                    rows={3}
+                                />
+                                <div className="flex justify-end mt-3">
+                                    <button
+                                        className="action-button secondary"
+                                        style={{ width: 'auto', padding: '8px 12px', fontSize: '0.9rem' }}
+                                        onClick={handleSubmitReview}
+                                        disabled={isSubmittingReview || newRating === 0}
+                                        title={newRating === 0 ? 'Choisissez une note' : 'Publier'}
+                                    >
+                                        {isSubmittingReview ? 'Publication…' : 'Publier l\'avis'}
+                                    </button>
+                                </div>
                             </div>
-                        )}
-
-                        {activeTab === 'reviews' && (
-                            <div className="reviews-tab">
-                                <div className="reviews-header">
-                                    <h3>Avis clients</h3>
-                                    {currentProduct.hasPurchased && (
-                                        <button className="btn btn-primary">
-                                            Laisser un avis
-                                        </button>
-                                    )}
-                                </div>
-
-                                {totalReviews > 0 && topReviews.length > 0 ? (
-                                    <div className="reviews-list space-y-4">
-                                        {topReviews.map((r) => (
-                                            <div key={r.id} className="p-4 bg-background-800 border border-background-700 rounded-xl">
-                                                <div className="flex items-start gap-3">
-                                                    <div className="w-9 h-9 rounded-full bg-background-700 flex items-center justify-center text-sm font-semibold">
-                                                        {r.user?.firstName?.[0]}{r.user?.lastName?.[0]}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="font-medium">{r.user?.firstName} {r.user?.lastName}</div>
-                                                            <div className="flex items-center">
-                                                                {[1, 2, 3, 4, 5].map(s => (
-                                                                    <Star key={s} size={14} className={s <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-600'} />
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        {r.comment && (
-                                                            <div className="text-sm text-text-300 mt-1">{r.comment}</div>
-                                                        )}
-                                                        <div className="text-xs text-text-500 mt-1">{new Date(r.createdAt as any).toLocaleDateString('fr-FR')}</div>
-                                                    </div>
-                                                </div>
+                        </div>
+                    )}
+                    {totalReviews > 0 && topReviews.length > 0 ? (
+                        <div className="reviews-list">
+                            {topReviews.map((r) => (
+                                <div key={r.id} className="review-item">
+                                    <div className="review-header">
+                                        <div className="review-author">
+                                            <div className="review-author-avatar">
+                                                {r.user?.firstName?.[0]}{r.user?.lastName?.[0]}
                                             </div>
-                                        ))}
+                                            <div className="review-author-name">{r.user?.firstName} {r.user?.lastName}</div>
+                                        </div>
+                                        <div className="review-rating">
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <Star key={s} size={14} className={s <= r.rating ? 'text-yellow-400 fill-current' : 'text-gray-600'} />
+                                            ))}
+                                        </div>
+                                        <div className="review-date">{new Date(r.createdAt as any).toLocaleDateString('fr-FR')}</div>
                                     </div>
-                                ) : (
-                                    <div className="no-reviews">
-                                        <p>Aucun avis pour le moment</p>
-                                        <p>Soyez le premier à laisser un avis !</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'details' && (
-                            <div className="details-tab">
-                                <div className="product-details">
-                                    <h3>Informations techniques</h3>
-                                    <div className="details-grid">
-                                        <div className="detail-item">
-                                            <span className="detail-label">Type de fichier</span>
-                                            <span className="detail-value">{currentProduct.fileType}</span>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span className="detail-label">Taille</span>
-                                            <span className="detail-value">
-                                                {currentProduct.fileSize ? `${(currentProduct.fileSize / 1024 / 1024).toFixed(1)} MB` : 'N/A'}
-                                            </span>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span className="detail-label">Ce que vous recevez</span>
-                                            <span className="detail-value">{Array.isArray((currentProduct as any).formats) ? ((currentProduct as any).formats as any).join(', ') : ((currentProduct as any).formats || currentProduct.fileType || 'Fichiers du produit')}</span>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span className="detail-label">Date de publication</span>
-                                            <span className="detail-value">
-                                                {currentProduct.createdAt ? new Date(currentProduct.createdAt).toLocaleDateString('fr-FR') : '—'}
-                                            </span>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span className="detail-label">Dernière mise à jour</span>
-                                            <span className="detail-value">
-                                                {currentProduct.updatedAt ? new Date(currentProduct.updatedAt).toLocaleDateString('fr-FR') : '—'}
-                                            </span>
-                                        </div>
-                                        <div className="detail-item">
-                                            <span className="detail-label">Licence</span>
-                                            <span className="detail-value">{(currentProduct as any).license || 'Usage personnel et commercial (sauf revente en l’état)'}</span>
-                                        </div>
-                                    </div>
+                                    {r.comment && (
+                                        <div className="review-content">{r.comment}</div>
+                                    )}
                                 </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="reviews-list">
+                            <div className="review-item">
+                                <div className="review-content">Aucun avis pour le moment.</div>
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Produits similaires */}
-                <div className="related-products">
-                    <h3>Produits similaires</h3>
-                    <div className="products-grid">
-                        {/* Liste des produits similaires - à implémenter */}
-                        <p>Produits similaires à venir</p>
+                <div className="similar-products animate-in-down" style={{ animationDelay: '240ms' }}>
+                    <div className="similar-products-header">
+                        <h3 className="similar-products-title">{similarProducts.length > 0 ? 'Produits similaires' : 'Vu récemment'}</h3>
+                        {carouselItems.length > 0 && (
+                            <div className="flex gap-2">
+                                <button className="action-button secondary" style={{ width: 'auto', padding: '8px 12px' }} onClick={() => scrollSimilar('left')} aria-label="Précédent">◀</button>
+                                <button className="action-button secondary" style={{ width: 'auto', padding: '8px 12px' }} onClick={() => scrollSimilar('right')} aria-label="Suivant">▶</button>
+                            </div>
+                        )}
+                    </div>
+                    {carouselItems.length > 0 ? (
+                        <div id="similar-scroller" className="similar-scroller">
+                            <div className="similar-track">
+                                {carouselItems.map((p) => (
+                                    <div key={`${p.id}`} className="similar-item" role="button" onClick={() => navigate(`/product/${p.id}`)}>
+                                        <div className="similar-thumb">
+                                            <img src={p.thumbnailUrl || p.image} alt={p.title} />
+                                        </div>
+                                        <div className="similar-meta">
+                                            <div className="similar-title" title={p.title}>{p.title}</div>
+                                            <div className="similar-price">{p.price} €</div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="similar-products-grid">
+                            <p>Produits similaires à venir</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Barre d'achat mobile sticky */}
+                <div className="mobile-buybar">
+                    <div className="mobile-buybar-content">
+                        <div className="mobile-buybar-price">
+                            <span className="current">{currentProduct.price} €</span>
+                            {currentProduct.originalPrice && (
+                                <span className="original">{currentProduct.originalPrice} €</span>
+                            )}
+                        </div>
+                        <div className="mobile-buybar-actions">
+                            <button className={`mobile-fav ${isFavorite ? 'active' : ''}`} onClick={handleToggleFavorite} aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}>
+                                ❤
+                            </button>
+                            <button className="mobile-add" onClick={handleAddToCart}>
+                                Ajouter au panier
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+            {/* Footer intentionally omitted: provided by global layout */}
         </div>
     );
 };

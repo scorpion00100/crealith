@@ -70,6 +70,13 @@ class AuthServiceClass {
     return resp as User;
   }
 
+  async updateProfile(data: { firstName?: string; lastName?: string; avatar?: string | null; bio?: string | null }): Promise<User> {
+    const resp = await apiService.put<any>('/auth/profile', data);
+    const user = resp?.data?.data?.user || resp?.data?.user || resp?.user || resp;
+    if (user) this.updateUser(user);
+    return user as User;
+  }
+
   logout(): void {
     localStorage.removeItem('crealith_user');
     localStorage.removeItem('crealith_token');
@@ -91,7 +98,22 @@ class AuthServiceClass {
   }
 
   getToken(): string | null {
-    return localStorage.getItem('crealith_token');
+    const token = localStorage.getItem('crealith_token');
+    if (!token) return null;
+    
+    // Vérifier si le token est expiré
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp && payload.exp < now) {
+        this.logout();
+        return null;
+      }
+      return token;
+    } catch {
+      this.logout();
+      return null;
+    }
   }
 
   updateUser(userData: Partial<User>): void {

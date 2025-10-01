@@ -62,14 +62,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     };
 
     return (
-        <div className={cn(cardVariants[variant], className)}>
+        <div
+            className={cn(cardVariants[variant], className, onQuickView && 'cursor-pointer')}
+            onClick={() => onQuickView?.(product.id)}
+        >
             {/* Image Container */}
             <div className={cn('relative overflow-hidden bg-background-900', imageVariants[variant])}>
                 {/* Product Image */}
                 <div className="relative w-full h-full">
                     {!imageError ? (
                         <img
-                            src={product.images?.[0] || '/placeholder-product.jpg'}
+                            src={product.image || product.thumbnailUrl || '/placeholder-product.jpg'}
                             alt={product.title}
                             loading="lazy"
                             className={cn(
@@ -102,7 +105,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                         <div className="flex gap-2">
                             {onQuickView && (
                                 <button
-                                    onClick={() => onQuickView(product.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onQuickView(product.id);
+                                    }}
                                     className="p-2 min-h-[44px] min-w-[44px] bg-white/90 hover:bg-white text-background-900 rounded-full transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500"
                                     title="Aperçu rapide"
                                 >
@@ -111,7 +117,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                             )}
                             {onAddToFavorites && (
                                 <button
-                                    onClick={() => onAddToFavorites(product.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onAddToFavorites(product.id);
+                                    }}
                                     className={cn(
                                         'p-2 min-h-[44px] min-w-[44px] rounded-full transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500',
                                         isFavorite
@@ -144,7 +153,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     {onAddToCart && (
                         <div className="absolute top-3 right-3">
                             <button
-                                onClick={() => onAddToCart(product.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onAddToCart(product.id);
+                                }}
                                 className={cn(
                                     'p-2 min-h-[44px] min-w-[44px] rounded-full transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary-500',
                                     isInCart
@@ -163,13 +175,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {/* Content */}
             <div className="p-4">
                 {/* Seller Info */}
-                {showSeller && product.seller && (
+                {showSeller && product.user && (
                     <div className="flex items-center gap-2 mb-2">
                         <div className="w-5 h-5 bg-primary-500/20 rounded-full flex items-center justify-center">
                             <User className="w-3 h-3 text-primary-400" />
                         </div>
                         <span className="text-xs text-text-400 truncate">
-                            {product.seller.firstName} {product.seller.lastName}
+                            {product.user.firstName} {product.user.lastName}
                         </span>
                     </div>
                 )}
@@ -208,11 +220,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                             variant === 'compact' ? 'text-sm' : 'text-lg',
                             variant === 'featured' && 'text-xl'
                         )}>
-                            {formatPrice(product.price)}
+                            {formatPrice(parseFloat(product.price))}
                         </span>
-                        {product.originalPrice && product.originalPrice > product.price && (
+                        {product.originalPrice && parseFloat(product.originalPrice) > parseFloat(product.price) && (
                             <span className="text-sm text-text-400 line-through">
-                                {formatPrice(product.originalPrice)}
+                                {formatPrice(parseFloat(product.originalPrice))}
                             </span>
                         )}
                     </div>

@@ -28,7 +28,7 @@ export const registerRateLimit = process.env.NODE_ENV === 'test' ? ((req: Reques
 });
 
 // Rate limiting pour la réinitialisation de mot de passe
-export const passwordResetRateLimit = rateLimit({
+export const passwordResetRateLimit = process.env.NODE_ENV === 'test' ? ((req: Request, res: Response, next: NextFunction) => next()) as any : rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 3, // 3 demandes par IP par heure
   message: {
@@ -40,7 +40,7 @@ export const passwordResetRateLimit = rateLimit({
 });
 
 // Rate limiting pour la vérification d'email
-export const emailVerificationRateLimit = rateLimit({
+export const emailVerificationRateLimit = process.env.NODE_ENV === 'test' ? ((req: Request, res: Response, next: NextFunction) => next()) as any : rateLimit({
   windowMs: 60 * 60 * 1000, // 1 heure
   max: 5, // 5 demandes par IP par heure
   message: {

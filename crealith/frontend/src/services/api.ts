@@ -1,4 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { store } from '@/store';
+import { setLoading } from '@/store/slices/uiSlice';
 import { authService } from './auth.service';
 import { retryWithBackoff, retryWithAuthRefresh, defaultRetryCondition } from '@/utils/retry-utils';
 
@@ -8,6 +10,7 @@ class ApiService {
   private api: AxiosInstance;
   private isRefreshing = false;
   private refreshPromise: Promise<void> | null = null;
+  private pendingRequests = 0;
 
   constructor() {
     this.api = axios.create({
@@ -18,14 +21,44 @@ class ApiService {
       withCredentials: true,
     });
 
-    // Intercepteur pour ajouter le token d'authentification
+    // Intercepteur pour ajouter le token d'authentification et gérer le chargement global
     this.api.interceptors.request.use(
       (config) => {
+        // Incrémenter le compteur global de requêtes en attente
+        this.pendingRequests += 1;
+        
+        // NE PAS afficher le loading global pour les actions rapides
         const url = config?.url || '';
+        const method = config.method?.toLowerCase() || '';
+        
+        // Exclure : analytics, favoris, panier, reviews (actions rapides avec toasts)
+        const isQuickRequest = url.includes('/analytics') || 
+                               url.includes('/favorites') ||
+                               url.includes('/cart') ||
+                               url.includes('/reviews');
+        
+        // Afficher loading uniquement pour les requêtes longues (produits, checkout, auth)
+        const isLongRequest = (url.includes('/products') && method === 'get') ||
+                             url.includes('/checkout') ||
+                             url.includes('/orders');
+        
+        if (isLongRequest && !isQuickRequest) {
+          try { store.dispatch(setLoading(true)); } catch {}
+        }
+        
         const isAuthRoute = url.includes('/auth/login') || url.includes('/auth/register');
         const token = authService.getToken();
         if (token && !isAuthRoute) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        // Add CSRF header for refresh/logout routes
+        const needsCsrf = url.includes('/auth/refresh') || url.includes('/auth/logout');
+        if (needsCsrf && typeof document !== 'undefined') {
+          const match = document.cookie.match(/(?:^|; )csrfToken=([^;]+)/);
+          const csrf = match ? decodeURIComponent(match[1]) : undefined;
+          if (csrf) {
+            (config.headers as any)['X-CSRF-Token'] = csrf;
+          }
         }
         return config;
       },
@@ -34,37 +67,60 @@ class ApiService {
       }
     );
 
-    // Intercepteur pour gérer les erreurs de réponse
+    // Intercepteur pour gérer les réponses et erreurs + chargement global
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Décrémenter le compteur sur succès
+        this.pendingRequests = Math.max(0, this.pendingRequests - 1);
+        if (this.pendingRequests === 0) {
+          try { store.dispatch(setLoading(false)); } catch {}
+        }
+        return response;
+      },
       async (error) => {
+        // Décrémenter le compteur sur erreur
+        this.pendingRequests = Math.max(0, this.pendingRequests - 1);
+        if (this.pendingRequests === 0) {
+          try { store.dispatch(setLoading(false)); } catch {}
+        }
         const { response } = error;
         const requestUrl: string = error?.config?.url || '';
         const originalRequest = error.config || {};
         
         if (response?.status === 401) {
           // Éviter de perturber le flux d'auth sur /auth/login et /auth/register
-          const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+          const isAuthRoute = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/register');
           const alreadyRetried = originalRequest.__isRetryRequest;
+          
           if (!isAuthRoute && !alreadyRetried) {
             try {
               // Marquer la requête pour éviter boucle infinie
               originalRequest.__isRetryRequest = true;
+              
+              // Vérifier si on a un refresh token valide
+              const refreshToken = localStorage.getItem('crealith_refresh');
+              if (!refreshToken) {
+                throw new Error('No refresh token available');
+              }
+              
               // Effectuer (ou attendre) un refresh unique
               await this.refreshAccessTokenOnce();
+              
               // Réinjecter le nouvel access token et rejouer la requête
               const newToken = authService.getToken();
               if (newToken) {
                 originalRequest.headers = originalRequest.headers || {};
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return this.api(originalRequest);
+              } else {
+                throw new Error('No new token received');
               }
-              return this.api(originalRequest);
             } catch (refreshError) {
+              console.warn('Token refresh failed:', refreshError);
               // Échec du refresh: déconnexion propre
               authService.logout();
-              setTimeout(() => {
-                window.location.href = '/login?reason=session_expired';
-              }, 300);
+              // Ne pas rediriger automatiquement, laisser l'utilisateur gérer
+              return Promise.reject(error);
             }
           }
         } else if (response?.status === 403) {

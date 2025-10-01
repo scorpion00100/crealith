@@ -1,5 +1,9 @@
 import React from 'react';
-import { ProductCard } from './ProductCard.simple';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { addFavoriteAsync, removeFavoriteAsync } from '@/store/slices/favoritesSlice';
+import { addNotification } from '@/store/slices/uiSlice';
+import { useCallback } from 'react';
+import { ProductCard } from './ProductCard';
 import { Product } from '@/types';
 
 interface ProductGridProps {
@@ -9,6 +13,7 @@ interface ProductGridProps {
   onAddToCart?: (productId: string) => void;
   onToggleFavorite?: (productId: string) => void;
   onPreview?: (product: Product) => void;
+  cardVariant?: 'minimal' | 'buyer' | 'seller' | 'admin';
 }
 
 export const ProductGrid: React.FC<ProductGridProps> = ({
@@ -19,6 +24,22 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   onToggleFavorite,
   onPreview
 }) => {
+  const dispatch = useAppDispatch();
+  const favoriteIds = useAppSelector((state) => (state as any).favorites?.favoriteIds || []);
+
+  const handleToggleFavorite = useCallback(async (productId: string) => {
+    try {
+      if (favoriteIds.includes(productId)) {
+        await dispatch(removeFavoriteAsync(productId)).unwrap();
+        dispatch(addNotification({ type: 'info', message: 'Retiré des favoris', duration: 2000 }));
+      } else {
+        await dispatch(addFavoriteAsync(productId)).unwrap();
+        dispatch(addNotification({ type: 'success', message: 'Ajouté aux favoris', duration: 2000 }));
+      }
+    } catch (e: any) {
+      dispatch(addNotification({ type: 'error', message: e?.message || 'Action favoris impossible', duration: 3000 }));
+    }
+  }, [dispatch, favoriteIds]);
   if (products.length === 0) {
     return (
       <div className="text-center py-12">
@@ -38,10 +59,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         <ProductCard
           key={product.id}
           product={product}
-          variant="buyer"
+          variant="minimal"
           onView={onView}
           onAddToCart={onAddToCart}
-          onAddToFavorites={onToggleFavorite}
+          onAddToFavorites={onToggleFavorite || handleToggleFavorite}
+          isFavorite={favoriteIds.includes(product.id)}
           onPreview={onPreview}
         />
       ))}
