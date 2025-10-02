@@ -72,7 +72,7 @@ export const forgotPasswordSchema = z.object({
 export const resetPasswordSchema = z.object({
   token: z.string()
     .min(1, 'Token requis'),
-  password: z.string()
+  newPassword: z.string()
     .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
     .max(128, 'Mot de passe trop long')
     .regex(
@@ -117,7 +117,8 @@ export const createProductSchema = z.object({
     .optional()
     .default([]),
   fileType: z.string()
-    .min(1, 'Type de fichier requis'),
+    .min(1, 'Type de fichier requis')
+    .optional(),
   isFeatured: z.boolean().optional().default(false),
   isActive: z.boolean().optional().default(true),
 });
@@ -231,6 +232,7 @@ export const updateProfileSchema = z.object({
   bio: z.string()
     .max(1000, 'Bio trop longue')
     .trim()
+    .nullable()
     .optional(),
   avatar: z.string()
     .url('URL d\'avatar invalide')

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppDispatch } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
+import { authService } from '@/services/auth.service';
 import {
     User,
     Mail,
@@ -76,18 +77,21 @@ export const SettingsPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Simulation de mise à jour du profil
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await authService.updateProfile({
+                firstName: profileData.firstName,
+                lastName: profileData.lastName,
+                bio: profileData.bio || undefined
+            });
 
             dispatch(addNotification({
                 type: 'success',
                 message: 'Profil mis à jour avec succès',
                 duration: 3000
             }));
-        } catch (error) {
+        } catch (error: any) {
             dispatch(addNotification({
                 type: 'error',
-                message: 'Erreur lors de la mise à jour du profil',
+                message: error?.message || 'Erreur lors de la mise à jour du profil',
                 duration: 4000
             }));
         } finally {
@@ -110,8 +114,10 @@ export const SettingsPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            // Simulation de changement de mot de passe
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await authService.changePassword({
+                currentPassword: securityData.currentPassword,
+                newPassword: securityData.newPassword
+            });
 
             dispatch(addNotification({
                 type: 'success',
@@ -125,10 +131,10 @@ export const SettingsPage: React.FC = () => {
                 confirmPassword: '',
                 twoFactorEnabled: securityData.twoFactorEnabled
             });
-        } catch (error) {
+        } catch (error: any) {
             dispatch(addNotification({
                 type: 'error',
-                message: 'Erreur lors du changement de mot de passe',
+                message: error?.message || 'Erreur lors du changement de mot de passe',
                 duration: 4000
             }));
         } finally {

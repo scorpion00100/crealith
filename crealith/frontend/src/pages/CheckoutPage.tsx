@@ -34,7 +34,14 @@ import {
 } from 'lucide-react';
 
 // Charger Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_key');
+const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+if (!publishableKey) {
+    // Clé manquante: empêcher l'utilisation d'une clé placeholder qui provoque un 401
+    // Log clair pour le développeur
+    // eslint-disable-next-line no-console
+    console.error('Stripe publishable key is missing. Set VITE_STRIPE_PUBLISHABLE_KEY in your frontend env.');
+}
+const stripePromise = loadStripe(publishableKey || '');
 
 interface CheckoutFormProps {
     onSuccess: () => void;
@@ -237,17 +244,17 @@ export const CheckoutPage: React.FC = () => {
         setStep('success');
         dispatch(addNotification({
             type: 'success',
-            message: 'Paiement réussi ! Votre commande a été confirmée.',
+            message: '🎉 Paiement réussi ! Votre commande a été confirmée.',
             duration: 5000
         }));
-        // Redirection vers les téléchargements
-        setTimeout(() => navigate('/downloads'), 1500);
+        // Redirection vers les téléchargements après 3 secondes
+        setTimeout(() => navigate('/downloads'), 3000);
     };
 
     const handleError = (message: string) => {
         dispatch(addNotification({
             type: 'error',
-            message: message,
+            message: `❌ Échec du paiement : ${message}`,
             duration: 5000
         }));
         // Option: rester sur place, ou guider vers /cart en cas d'échec de paiement

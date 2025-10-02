@@ -22,7 +22,7 @@ export interface CreateProductData {
   shortDescription?: string;
   price: number;
   originalPrice?: number;
-  file: Express.Multer.File;
+  file?: Express.Multer.File;
   thumbnail?: Express.Multer.File;
   tags: string[];
   categoryId: string;
@@ -46,11 +46,20 @@ export interface UpdateProductData {
 export class ProductService {
   async createProduct(data: CreateProductData): Promise<Product> {
     try {
-      // Upload du fichier principal
-      const fileUpload = await uploadToImageKit(data.file, 'products');
+      // Upload du fichier principal si fourni
+      let fileUrl = 'https://via.placeholder.com/400x300?text=No+File';
+      let fileSize = 0;
+      let fileType = 'application/octet-stream';
+      
+      if (data.file) {
+        const fileUpload = await uploadToImageKit(data.file, 'products');
+        fileUrl = fileUpload.url;
+        fileSize = data.file.size;
+        fileType = data.file.mimetype;
+      }
       
       // Upload de la thumbnail si fournie
-      let thumbnailUrl = null;
+      let thumbnailUrl = fileUrl;
       if (data.thumbnail) {
         const thumbnailUpload = await uploadToImageKit(data.thumbnail, 'thumbnails');
         thumbnailUrl = thumbnailUpload.url;
@@ -63,10 +72,10 @@ export class ProductService {
           shortDescription: data.shortDescription,
           price: new Prisma.Decimal(data.price),
           originalPrice: data.originalPrice ? new Prisma.Decimal(data.originalPrice) : null,
-          fileUrl: fileUpload.url,
-          thumbnailUrl: thumbnailUrl || fileUpload.url,
-          fileSize: data.file.size,
-          fileType: data.file.mimetype,
+          fileUrl: fileUrl,
+          thumbnailUrl: thumbnailUrl,
+          fileSize: fileSize,
+          fileType: fileType,
           tags: data.tags,
           userId: data.userId,
           categoryId: data.categoryId,

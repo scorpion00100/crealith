@@ -4,7 +4,23 @@ import { useAppDispatch } from '@/store';
 import { addNotification } from '@/store/slices/uiSlice';
 import { downloadService } from '@/services/download.service';
 import { orderService } from '@/services/order.service';
-import { Download, Eye, Calendar, Package } from 'lucide-react';
+import {
+    Download,
+    Eye,
+    Calendar,
+    Package,
+    CheckCircle,
+    Clock,
+    Star,
+    ArrowLeft,
+    Sparkles,
+    Shield,
+    Zap,
+    Heart,
+    Award,
+    Users,
+    Gift
+} from 'lucide-react';
 
 interface DownloadItem {
     id: string;
@@ -57,102 +73,166 @@ export const DownloadsPage: React.FC = () => {
 
     const handleDownload = async (productId: string) => {
         try {
+            console.log('Tentative de téléchargement pour le produit:', productId);
             const res = await downloadService.generateDownloadUrl(productId);
-            const url = (res as any)?.data?.url || (res as any)?.url || res?.url;
-            if (url) {
-                window.open(url, '_blank');
+            console.log('Réponse du service:', res);
+
+            if (res?.url) {
+                console.log('Ouverture de l\'URL:', res.url);
+                window.open(res.url, '_blank');
+                dispatch(addNotification({
+                    type: 'success',
+                    message: 'Téléchargement lancé !',
+                    duration: 3000
+                }));
             } else {
-                throw new Error('URL de téléchargement indisponible');
+                throw new Error('URL de téléchargement non reçue');
             }
         } catch (e: any) {
-            dispatch(addNotification({ type: 'error', message: e?.message || 'Téléchargement impossible', duration: 4000 }));
+            console.error('Erreur de téléchargement:', e);
+            dispatch(addNotification({
+                type: 'error',
+                message: e?.message || 'Téléchargement impossible',
+                duration: 4000
+            }));
         }
     };
 
     return (
-        <div className="min-h-screen bg-background-50">
-            <div className="container mx-auto px-4 py-8 max-w-6xl">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-earth-900 mb-2">Mes téléchargements</h1>
-                        <p className="text-earth-600">Accédez à tous vos produits achetés</p>
+        <div className="min-h-screen bg-gray-900">
+            {/* Header */}
+            <div className="bg-gray-800 border-b border-gray-700">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                                <span>Retour au dashboard</span>
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2 text-white">
+                            <Sparkles className="w-5 h-5 text-yellow-400" />
+                            <span className="font-semibold">Crealith</span>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => navigate('/catalog')}
-                        className="btn btn-outline flex items-center gap-2"
-                    >
-                        <Package className="w-4 h-4" />
-                        Explorer le catalogue
-                    </button>
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Page Header */}
+                <div className="text-center mb-12">
+                    <div className="mx-auto w-20 h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                        <Download className="w-10 h-10 text-white" />
+                    </div>
+                    <h1 className="text-4xl font-bold text-white mb-4">
+                        Mes téléchargements
+                    </h1>
+                    <p className="text-xl text-gray-400 mb-8">
+                        Accédez à tous vos produits achetés et téléchargez-les instantanément
+                    </p>
                 </div>
 
                 {/* Loading State */}
                 {isLoading && (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
-                        <span className="ml-3 text-earth-600">Chargement de vos téléchargements...</span>
+                    <div className="flex items-center justify-center py-20">
+                        <div className="text-center">
+                            <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-400 text-lg">Chargement de vos téléchargements...</p>
+                        </div>
                     </div>
                 )}
 
                 {/* Error State */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
-                        <div className="flex items-center">
-                            <div className="text-red-600 font-medium">Erreur de chargement</div>
+                    <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-6 mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                                <span className="text-white text-sm">!</span>
+                            </div>
+                            <div>
+                                <h3 className="text-red-400 font-semibold">Erreur de chargement</h3>
+                                <p className="text-red-300 mt-1">{error}</p>
+                            </div>
                         </div>
-                        <p className="text-red-600 mt-1">{error}</p>
                     </div>
                 )}
 
                 {/* Empty State */}
                 {!isLoading && items.length === 0 && (
-                    <div className="text-center py-12">
-                        <div className="w-24 h-24 bg-earth-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Package className="w-12 h-12 text-earth-400" />
+                    <div className="text-center py-20">
+                        <div className="w-32 h-32 bg-gradient-to-r from-gray-700 to-gray-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+                            <Package className="w-16 h-16 text-gray-400" />
                         </div>
-                        <h3 className="text-xl font-semibold text-earth-900 mb-2">Aucun téléchargement disponible</h3>
-                        <p className="text-earth-600 mb-6">Vous n'avez pas encore acheté de produits numériques.</p>
-                        <button
-                            onClick={() => navigate('/catalog')}
-                            className="btn btn-primary"
-                        >
-                            Découvrir le catalogue
-                        </button>
+                        <h3 className="text-2xl font-bold text-white mb-4">Aucun téléchargement disponible</h3>
+                        <p className="text-gray-400 text-lg mb-8 max-w-md mx-auto">
+                            Vous n'avez pas encore acheté de produits numériques. Découvrez notre catalogue et trouvez des créations incroyables !
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <button
+                                onClick={() => navigate('/catalog')}
+                                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                            >
+                                <Gift className="w-5 h-5" />
+                                Découvrir le catalogue
+                            </button>
+                            <button
+                                onClick={() => navigate('/dashboard')}
+                                className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700"
+                            >
+                                <ArrowLeft className="w-5 h-5" />
+                                Retour au dashboard
+                            </button>
+                        </div>
                     </div>
                 )}
 
                 {/* Downloads Grid */}
                 {!isLoading && items.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {items.map(item => (
-                            <div key={item.id} className="bg-white border border-earth-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                                <div className="flex items-start gap-4">
-                                    <img
-                                        src={item.thumbnailUrl || 'https://via.placeholder.com/120x90?text=Preview'}
-                                        alt={item.title}
-                                        className="w-20 h-16 object-cover rounded-lg flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="font-semibold text-earth-900 line-clamp-2 mb-2">{item.title}</h3>
-                                        <div className="flex items-center text-sm text-earth-500 mb-4">
-                                            <Calendar className="w-4 h-4 mr-1" />
+                            <div key={item.id} className="bg-gray-800 border border-gray-700 rounded-xl p-6 hover:shadow-xl transition-all duration-300 hover:border-indigo-500/50 group">
+                                <div className="flex flex-col h-full">
+                                    {/* Product Image */}
+                                    <div className="relative mb-4">
+                                        <img
+                                            src={item.thumbnailUrl || 'https://via.placeholder.com/300x200?text=Preview'}
+                                            alt={item.title}
+                                            className="w-full h-48 object-cover rounded-lg"
+                                        />
+                                        <div className="absolute top-3 right-3 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                            <CheckCircle className="w-3 h-3" />
+                                            Acheté
+                                        </div>
+                                    </div>
+
+                                    {/* Product Info */}
+                                    <div className="flex-1 flex flex-col">
+                                        <h3 className="font-bold text-white text-lg mb-3 line-clamp-2 group-hover:text-indigo-400 transition-colors">
+                                            {item.title}
+                                        </h3>
+
+                                        <div className="flex items-center text-sm text-gray-400 mb-4">
+                                            <Calendar className="w-4 h-4 mr-2" />
                                             Acheté le {new Date(item.purchasedAt as any).toLocaleDateString('fr-FR')}
                                         </div>
-                                        <div className="flex gap-2">
+
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-3 mt-auto">
                                             <button
-                                                className="btn btn-primary btn-sm flex items-center gap-2"
+                                                className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                                                 onClick={() => handleDownload(item.productId)}
                                             >
                                                 <Download className="w-4 h-4" />
                                                 Télécharger
                                             </button>
                                             <button
-                                                className="btn btn-outline btn-sm flex items-center gap-2"
+                                                className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 border border-gray-600"
                                                 onClick={() => navigate(`/product/${item.productId}`)}
                                             >
                                                 <Eye className="w-4 h-4" />
-                                                Voir
                                             </button>
                                         </div>
                                     </div>
@@ -162,17 +242,60 @@ export const DownloadsPage: React.FC = () => {
                     </div>
                 )}
 
-                {/* Stats */}
+                {/* Stats & Summary */}
                 {!isLoading && items.length > 0 && (
-                    <div className="mt-8 bg-white border border-earth-200 rounded-xl p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="font-semibold text-earth-900">Résumé de vos achats</h3>
-                                <p className="text-earth-600 text-sm">Total: {items.length} produit{items.length > 1 ? 's' : ''} acheté{items.length > 1 ? 's' : ''}</p>
+                    <div className="mt-12">
+                        <div className="bg-gradient-to-r from-gray-800 to-gray-700 rounded-xl p-8 border border-gray-600">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-white mb-2">Résumé de vos achats</h3>
+                                    <p className="text-gray-400">
+                                        Total: {items.length} produit{items.length > 1 ? 's' : ''} acheté{items.length > 1 ? 's' : ''}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-4xl font-bold text-indigo-400">{items.length}</div>
+                                    <div className="text-gray-400">Téléchargements</div>
+                                </div>
                             </div>
-                            <div className="text-right">
-                                <div className="text-2xl font-bold text-primary-600">{items.length}</div>
-                                <div className="text-sm text-earth-500">Téléchargements</div>
+                        </div>
+
+                        {/* Features */}
+                        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-green-600 rounded-lg">
+                                        <Shield className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h4 className="font-semibold text-white">Accès sécurisé</h4>
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                    Vos fichiers sont protégés et accessibles uniquement à vous
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-blue-600 rounded-lg">
+                                        <Zap className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h4 className="font-semibold text-white">Téléchargement instantané</h4>
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                    Accédez à vos fichiers immédiatement après l'achat
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-purple-600 rounded-lg">
+                                        <Heart className="w-5 h-5 text-white" />
+                                    </div>
+                                    <h4 className="font-semibold text-white">Support 24/7</h4>
+                                </div>
+                                <p className="text-gray-400 text-sm">
+                                    Notre équipe est là pour vous aider en cas de problème
+                                </p>
                             </div>
                         </div>
                     </div>

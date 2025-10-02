@@ -16,6 +16,9 @@ router.get('/:orderId', orderController.getOrderById);
 // Créer une nouvelle commande
 router.post('/', orderController.createOrder);
 
+// Confirmer une commande après paiement Stripe
+router.post('/confirm', orderController.confirmOrder);
+
 // Mettre à jour le statut d'une commande
 router.patch('/:orderId/status', orderController.updateOrderStatus);
 

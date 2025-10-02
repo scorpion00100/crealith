@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Début du seeding de la base de données...');
 
-  // Nettoyer les données existantes
+  // Nettoyer les données existantes (sauf les utilisateurs)
   console.log('🧹 Nettoyage des données existantes...');
   await prisma.favorite.deleteMany();
   await prisma.cartItem.deleteMany();
@@ -17,45 +17,55 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
-  await prisma.user.deleteMany();
+  // Ne pas supprimer les utilisateurs existants
 
-  // Créer des catégories
+  // Créer des catégories (seulement si elles n'existent pas)
   console.log('📁 Création des catégories...');
   const categories = await Promise.all([
-    prisma.category.create({
-      data: {
+    prisma.category.upsert({
+      where: { slug: 'templates' },
+      update: {},
+      create: {
         name: 'Templates Web',
         description: 'Templates et thèmes pour sites web',
         slug: 'templates',
         icon: '🌐',
       },
     }),
-    prisma.category.create({
-      data: {
+    prisma.category.upsert({
+      where: { slug: 'ui-kits' },
+      update: {},
+      create: {
         name: 'UI Kits',
         description: 'Kits d\'interface utilisateur et composants',
         slug: 'ui-kits',
         icon: '🎨',
       },
     }),
-    prisma.category.create({
-      data: {
+    prisma.category.upsert({
+      where: { slug: 'dashboards' },
+      update: {},
+      create: {
         name: 'Dashboards',
         description: 'Tableaux de bord et interfaces d\'administration',
         slug: 'dashboards',
         icon: '📊',
       },
     }),
-    prisma.category.create({
-      data: {
+    prisma.category.upsert({
+      where: { slug: 'illustrations' },
+      update: {},
+      create: {
         name: 'Illustrations',
         description: 'Illustrations et graphiques vectoriels',
         slug: 'illustrations',
         icon: '🎭',
       },
     }),
-    prisma.category.create({
-      data: {
+    prisma.category.upsert({
+      where: { slug: 'icons' },
+      update: {},
+      create: {
         name: 'Icons',
         description: 'Icônes et symboles',
         slug: 'icons',
@@ -64,14 +74,16 @@ async function main() {
     }),
   ]);
 
-  // Créer des utilisateurs (vendeurs et acheteurs)
-  console.log('👥 Création des utilisateurs...');
+  // Créer des utilisateurs de test (seulement s'ils n'existent pas)
+  console.log('👥 Création des utilisateurs de test...');
   const hashedPassword = await bcrypt.hash('password123', 12);
 
   const users = await Promise.all([
     // Vendeurs
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'designer@crealith.com' },
+      update: {},
+      create: {
         email: 'designer@crealith.com',
         passwordHash: hashedPassword,
         firstName: 'Marie',
@@ -82,8 +94,10 @@ async function main() {
         bio: 'Designer UI/UX passionnée par la création d\'interfaces modernes',
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'developer@crealith.com' },
+      update: {},
+      create: {
         email: 'developer@crealith.com',
         passwordHash: hashedPassword,
         firstName: 'Pierre',
@@ -94,8 +108,10 @@ async function main() {
         bio: 'Développeur full-stack spécialisé en React et Node.js',
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'creative@crealith.com' },
+      update: {},
+      create: {
         email: 'creative@crealith.com',
         passwordHash: hashedPassword,
         firstName: 'Sophie',
@@ -107,8 +123,10 @@ async function main() {
       },
     }),
     // Acheteurs
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'buyer1@crealith.com' },
+      update: {},
+      create: {
         email: 'buyer1@crealith.com',
         passwordHash: hashedPassword,
         firstName: 'Jean',
@@ -119,8 +137,10 @@ async function main() {
         bio: 'Entrepreneur à la recherche de ressources créatives',
       },
     }),
-    prisma.user.create({
-      data: {
+    prisma.user.upsert({
+      where: { email: 'buyer2@crealith.com' },
+      update: {},
+      create: {
         email: 'buyer2@crealith.com',
         passwordHash: hashedPassword,
         firstName: 'Alice',

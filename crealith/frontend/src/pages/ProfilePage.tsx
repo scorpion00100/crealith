@@ -86,7 +86,7 @@ export const ProfilePage: React.FC = () => {
                 firstName: formData.firstName,
                 lastName: formData.lastName,
                 bio: formData.bio || undefined,
-                avatar: formData.avatar ? formData.avatar : null,
+                avatar: formData.avatar || undefined,
             });
 
             // 2) Optionnel: upload avatarFile (non implémenté ici)

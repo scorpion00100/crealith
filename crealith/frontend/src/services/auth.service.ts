@@ -77,6 +77,11 @@ class AuthServiceClass {
     return user as User;
   }
 
+  async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
+    const resp = await apiService.post<any>('/auth/change-password', data);
+    return resp;
+  }
+
   logout(): void {
     localStorage.removeItem('crealith_user');
     localStorage.removeItem('crealith_token');
@@ -103,7 +108,12 @@ class AuthServiceClass {
     
     // Vérifier si le token est expiré
     try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        this.logout();
+        return null;
+      }
+      const payload = JSON.parse(atob(parts[1] || ''));
       const now = Math.floor(Date.now() / 1000);
       if (payload.exp && payload.exp < now) {
         this.logout();
