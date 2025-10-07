@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Product } from '@/types';
 import {
   Eye,
@@ -72,7 +72,7 @@ const getSizeClasses = (size: 'small' | 'medium' | 'large') => {
   }
 };
 
-export const ProductCard: React.FC<ProductCardProps> = ({
+export const ProductCard = React.memo<ProductCardProps>(({
   product,
   variant = 'buyer',
   size = 'medium',
@@ -380,6 +380,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default ProductCard;

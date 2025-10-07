@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { logger } from '@/utils/logger';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '@/store';
 import { searchProductsAsync } from '@/store/slices/searchSlice';
@@ -124,7 +125,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         navigate(`/catalog?q=${encodeURIComponent(searchQuery)}`);
       }
     } catch (error) {
-      console.error('Search error:', error);
+      logger.error('Search error:', error);
     }
   };
 

@@ -39,7 +39,7 @@ if (!publishableKey) {
     // Clé manquante: empêcher l'utilisation d'une clé placeholder qui provoque un 401
     // Log clair pour le développeur
     // eslint-disable-next-line no-console
-    console.error('Stripe publishable key is missing. Set VITE_STRIPE_PUBLISHABLE_KEY in your frontend env.');
+    logger.error('Stripe publishable key is missing. Set VITE_STRIPE_PUBLISHABLE_KEY in your frontend env.');
 }
 const stripePromise = loadStripe(publishableKey || '');
 

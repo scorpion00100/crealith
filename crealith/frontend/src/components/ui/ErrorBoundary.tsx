@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { logger } from '@/utils/logger';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
 interface Props {
@@ -29,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
         });
 
         // Log l'erreur pour le monitoring
-        console.error('ErrorBoundary caught an error:', error, errorInfo);
+        logger.error('ErrorBoundary caught an error:', error, errorInfo);
 
         // Ici vous pourriez envoyer l'erreur à un service de monitoring
         // comme Sentry, LogRocket, etc.
@@ -109,7 +110,7 @@ export class ErrorBoundary extends Component<Props, State> {
 // Hook pour utiliser l'ErrorBoundary dans les composants fonctionnels
 export const useErrorHandler = () => {
     const handleError = (error: Error, errorInfo?: string) => {
-        console.error('Error caught by useErrorHandler:', error, errorInfo);
+        logger.error('Error caught by useErrorHandler:', error, errorInfo);
 
         // Ici vous pourriez envoyer l'erreur à un service de monitoring
         // ou dispatcher une action Redux pour afficher une notification
@@ -167,7 +168,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
 // Hook pour gérer les erreurs async
 export const useAsyncError = () => {
     const handleAsyncError = (error: unknown, context?: string) => {
-        console.error(`Async error${context ? ` in ${context}` : ''}:`, error);
+        logger.error(`Async error${context ? ` in ${context}` : ''}:`, error);
 
         // Ici vous pourriez dispatcher une action Redux pour afficher une notification
         // ou envoyer l'erreur à un service de monitoring

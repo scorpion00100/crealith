@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { logger } from '@/utils/logger';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { loginUser, registerUser, logout, fetchUserProfile, clearError } from '@/store/slices/authSlice';
@@ -230,7 +231,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             try {
                 await dispatch(fetchUserProfile());
             } catch (error) {
-                console.error('Erreur lors du rafraîchissement du profil:', error);
+                logger.error('Erreur lors du rafraîchissement du profil:', error);
             }
         }
     };

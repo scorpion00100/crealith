@@ -30,6 +30,8 @@ model User {
   googleRefreshToken String? @map("google_refresh_token")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+  deletedBy     String?   @map("deleted_by")
 
   products      Product[]
   orders        Order[]
@@ -43,6 +45,8 @@ model User {
   @@index([googleId])
   @@index([role])
   @@index([isActive])
+  @@index([deletedAt])
+  @@index([isActive, deletedAt])
   @@map("users")
 }
 
@@ -81,6 +85,8 @@ model Product {
   isFeatured      Boolean       @default(false) @map("is_featured")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
+  deletedAt       DateTime?     @map("deleted_at")
+  deletedBy       String?       @map("deleted_by")
 
   userId          String        @map("user_id")
   categoryId      String        @map("category_id")
@@ -102,6 +108,8 @@ model Product {
   @@index([categoryId, isActive])
   @@index([isFeatured, createdAt])
   @@index([userId, isActive])
+  @@index([deletedAt])
+  @@index([isActive, deletedAt])
   @@map("products")
 }
 
@@ -114,6 +122,8 @@ model Order {
   paymentMethod   String?     @map("payment_method")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+  cancelReason    String?     @map("cancel_reason")
 
   userId          String      @map("user_id")
 
@@ -126,6 +136,8 @@ model Order {
   @@index([createdAt])
   @@index([userId, status])
   @@index([orderNumber])
+  @@index([deletedAt])
+  @@index([status, deletedAt])
   @@map("orders")
 }
 

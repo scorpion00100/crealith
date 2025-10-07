@@ -60,6 +60,13 @@ router.put('/:id', requireSeller, validate(idParamSchema, 'params'), requireOwne
 ]), validate(updateProductSchema), productController.updateProduct);
 
 router.delete('/:id', requireSeller, validate(idParamSchema, 'params'), requireOwnership('product'), productController.deleteProduct);
+
+// Route de restauration (vendeur peut restaurer ses propres produits)
+router.post('/:id/restore', requireSeller, validate(idParamSchema, 'params'), productController.restoreProduct);
+
+// Route de suppression permanente (admin seulement)
+router.delete('/:id/permanent', requireAdmin, validate(idParamSchema, 'params'), productController.hardDeleteProduct);
+
 router.get('/user/products', requireSeller, productController.getUserProducts);
 
 // Route de téléchargement

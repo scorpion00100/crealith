@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import toast from 'react-hot-toast';
+import { logger } from '@/utils/logger';
 
 /**
  * Types d'erreurs pour la gestion centralisée
@@ -155,12 +156,12 @@ export const useErrorHandler = () => {
    */
   const logError = useCallback((errorInfo: ErrorInfo, config: ErrorHandlerConfig) => {
     if (config.logToConsole) {
-      console.error('Error Handler:', errorInfo);
+      logger.error('Error Handler:', errorInfo);
     }
 
-    // TODO: Implémenter l'envoi vers un service de monitoring
+    // TODO: Implémenter l'envoi vers un service de monitoring (Sentry)
     if (config.reportToService) {
-      // sendErrorToMonitoring(errorInfo);
+      // Sentry.captureException(errorInfo);
     }
   }, []);
 
@@ -268,7 +269,7 @@ export const useErrorHandler = () => {
 
           const delay = (finalConfig.retryDelay || 1000) * Math.pow(2, attempt);
           
-          console.log(`Retrying operation ${operationId} after ${delay}ms (attempt ${attempt + 1})`);
+          logger.log(`Retrying operation ${operationId} after ${delay}ms (attempt ${attempt + 1})`);
           
           await new Promise(resolve => setTimeout(resolve, delay));
           attempt++;

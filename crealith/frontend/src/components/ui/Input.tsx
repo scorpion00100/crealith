@@ -8,7 +8,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     variant?: 'default' | 'outlined' | 'filled';
 }
 
-export const Input: React.FC<InputProps> = ({
+export const Input = React.memo<InputProps>(({
     label,
     error,
     helperText,
@@ -56,6 +56,6 @@ export const Input: React.FC<InputProps> = ({
             )}
         </div>
     );
-};
+});
 
 export default Input;

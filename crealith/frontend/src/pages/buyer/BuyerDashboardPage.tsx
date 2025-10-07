@@ -99,6 +99,11 @@ const mockRecommendedProducts = [
     }
 ];
 
+/**
+ * Tableau de bord acheteur: recherche, produits recommandés,
+ * stats personnelles, actions rapides. Connecte le store (cart/favorites)
+ * et fournit des handlers d'ajout panier et favoris.
+ */
 const BuyerDashboardPage: React.FC = () => {
     const { user, isAuthenticated } = useAuth();
     const dispatch = useAppDispatch();
@@ -127,6 +132,7 @@ const BuyerDashboardPage: React.FC = () => {
         dispatch(fetchProducts());
     }, [dispatch]);
 
+    /** Ajoute 1 unité d'un produit au panier, avec redirection login si nécessaire. */
     const handleAddToCart = async (product: any) => {
         console.log('🛒 handleAddToCart appelé avec:', product);
 
@@ -159,6 +165,7 @@ const BuyerDashboardPage: React.FC = () => {
     };
 
     const isFavorite = (id: string) => favorites.items.some((p: any) => p.id === id);
+    /** Ajoute/retire un produit des favoris côté utilisateur. */
     const handleToggleFavorite = async (product: any) => {
         console.log('❤️ handleToggleFavorite appelé avec:', product);
         console.log('❤️ Est déjà favori?', isFavorite(product.id));
@@ -299,7 +306,7 @@ const BuyerDashboardPage: React.FC = () => {
                                 </button>
                                 <div>
                                     <h1 className="text-xl md:text-2xl font-bold text-text-100">
-                                        Bonjour, {user?.firstName} ! 👋
+                                        Bonjour, {user?.firstName} !
                                     </h1>
                                     <p className="text-text-400 text-sm md:text-base">
                                         Découvrez des créations uniques

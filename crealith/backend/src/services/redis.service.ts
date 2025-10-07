@@ -2,6 +2,9 @@ import Redis from 'ioredis';
 import { SecureLogger } from '../utils/secure-logger';
 import { RedisSecurityValidator, SecureRedisConfig } from '../utils/redis-security';
 
+// Contrôle des logs debug en production
+const IS_DEBUG = process.env.LOG_LEVEL === 'debug' || process.env.NODE_ENV === 'development';
+
 class RedisService {
   public readonly redis: Redis;
   private isConnected = false;
@@ -21,7 +24,21 @@ class RedisService {
         });
       }
 
-      this.redis = new Redis(this.config);
+      // Créer la connexion Redis avec gestion d'erreur améliorée
+      this.redis = new Redis({
+        ...this.config,
+        // Options spécifiques pour éviter les problèmes d'auth
+        enableReadyCheck: true,
+        retryStrategy: (times: number) => {
+          if (times > 10) {
+            SecureLogger.error('Redis max retries reached', new Error('Max retries'));
+            return null; // Arrêter les tentatives
+          }
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        }
+      });
+      
       this.setupEventHandlers();
       
       SecureLogger.info('Redis service initialized with secure configuration', {
@@ -29,7 +46,7 @@ class RedisService {
         port: this.config.port,
         db: this.config.db,
         hasTls: !!this.config.tls,
-        hasPassword: !!this.config.password
+        hasPassword: this.config.password ? '[MASKED]' : 'none'
       });
     } catch (error) {
       SecureLogger.error('Failed to initialize Redis service', error);
@@ -107,7 +124,9 @@ class RedisService {
       } else {
         await this.redis.set(key, serialized);
       }
-      SecureLogger.debug(`Cache set: ${key}`, { ttl: ttlSeconds });
+      if (IS_DEBUG) {
+        SecureLogger.debug(`Cache set: ${key}`, { ttl: ttlSeconds });
+      }
     } catch (error) {
       SecureLogger.error(`Failed to set cache for key: ${key}`, error);
       // Ne pas lever d'erreur pour ne pas bloquer l'application
@@ -123,7 +142,9 @@ class RedisService {
       if (!data) return null;
       
       const parsed = JSON.parse(data);
-      SecureLogger.debug(`Cache hit: ${key}`);
+      if (IS_DEBUG) {
+        SecureLogger.debug(`Cache hit: ${key}`);
+      }
       return parsed as T;
     } catch (error) {
       SecureLogger.error(`Failed to get cache for key: ${key}`, error);
@@ -137,7 +158,9 @@ class RedisService {
   async cacheDel(key: string): Promise<void> {
     try {
       await this.redis.del(key);
-      SecureLogger.debug(`Cache deleted: ${key}`);
+      if (IS_DEBUG) {
+        SecureLogger.debug(`Cache deleted: ${key}`);
+      }
     } catch (error) {
       SecureLogger.error(`Failed to delete cache for key: ${key}`, error);
     }
@@ -151,7 +174,9 @@ class RedisService {
       const keys = await this.redis.keys(pattern);
       if (keys.length > 0) {
         await this.redis.del(...keys);
-        SecureLogger.debug(`Cache pattern deleted: ${pattern}`, { count: keys.length });
+        if (IS_DEBUG) {
+          SecureLogger.debug(`Cache pattern deleted: ${pattern}`, { count: keys.length });
+        }
       }
     } catch (error) {
       SecureLogger.error(`Failed to delete cache pattern: ${pattern}`, error);
@@ -177,7 +202,9 @@ class RedisService {
   async cacheExpire(key: string, ttlSeconds: number): Promise<void> {
     try {
       await this.redis.expire(key, ttlSeconds);
-      SecureLogger.debug(`Cache expiration set: ${key}`, { ttl: ttlSeconds });
+      if (IS_DEBUG) {
+        SecureLogger.debug(`Cache expiration set: ${key}`, { ttl: ttlSeconds });
+      }
     } catch (error) {
       SecureLogger.error(`Failed to set cache expiration for key: ${key}`, error);
     }
@@ -217,11 +244,13 @@ class RedisService {
       await this.redis.sadd(userTokensKey, token);
       await this.redis.expire(userTokensKey, expiresIn);
       
-      SecureLogger.debug('Refresh token stored', {
-        userId: userId.substring(0, 8) + '...',
-        expiresIn,
-        keyPrefix: 'refresh_token'
-      });
+      if (IS_DEBUG) {
+        SecureLogger.debug('Refresh token stored', {
+          userId: userId.substring(0, 8) + '...',
+          expiresIn,
+          keyPrefix: 'refresh_token'
+        });
+      }
     } catch (error) {
       SecureLogger.error('Error storing refresh token', error, {
         userId: userId ? userId.substring(0, 8) + '...' : 'unknown'
@@ -279,10 +308,12 @@ class RedisService {
         const userTokensKey = RedisSecurityValidator.generateSecureKey('user_tokens', tokenData.userId);
         await this.redis.srem(userTokensKey, token);
         
-        SecureLogger.debug('Refresh token revoked', {
-          userId: tokenData.userId.substring(0, 8) + '...',
-          tokenPrefix: token.substring(0, 8) + '...'
-        });
+        if (IS_DEBUG) {
+          SecureLogger.debug('Refresh token revoked', {
+            userId: tokenData.userId.substring(0, 8) + '...',
+            tokenPrefix: token.substring(0, 8) + '...'
+          });
+        }
         return true;
       }
       
@@ -319,10 +350,12 @@ class RedisService {
       pipeline.del(userTokensKey);
       await pipeline.exec();
       
-      SecureLogger.debug('All user tokens revoked', {
-        userId: userId.substring(0, 8) + '...',
-        tokenCount: tokens.length
-      });
+      if (IS_DEBUG) {
+        SecureLogger.debug('All user tokens revoked', {
+          userId: userId.substring(0, 8) + '...',
+          tokenCount: tokens.length
+        });
+      }
       return tokens.length;
     } catch (error) {
       SecureLogger.error('Error revoking all user tokens', error, {
@@ -391,7 +424,7 @@ class RedisService {
       const expiresAt = new Date(tokenData.expiresAt);
       const isValid = expiresAt > new Date();
       
-      if (!isValid) {
+      if (!isValid && IS_DEBUG) {
         SecureLogger.debug('Token validation failed - expired', {
           tokenPrefix: token.substring(0, 8) + '...',
           expiresAt: tokenData.expiresAt
@@ -473,11 +506,13 @@ class RedisService {
       }
 
       await this.redis.setex(key, expiresIn, value);
-      SecureLogger.debug('Reset token stored', {
-        email: email.substring(0, 3) + '***@' + email.split('@')[1],
-        expiresIn,
-        keyPrefix: 'reset_token'
-      });
+      if (IS_DEBUG) {
+        SecureLogger.debug('Reset token stored', {
+          email: email.substring(0, 3) + '***@' + email.split('@')[1],
+          expiresIn,
+          keyPrefix: 'reset_token'
+        });
+      }
     } catch (error) {
       SecureLogger.error('Error storing reset token', error, {
         email: email ? email.substring(0, 3) + '***@' + email.split('@')[1] : 'unknown'
@@ -527,7 +562,7 @@ class RedisService {
       const key = RedisSecurityValidator.generateSecureKey('reset_token', token);
       const result = await this.redis.del(key);
       
-      if (result > 0) {
+      if (result > 0 && IS_DEBUG) {
         SecureLogger.debug('Reset token revoked', {
           tokenPrefix: token.substring(0, 8) + '...'
         });

@@ -280,8 +280,129 @@ export class OrderService {
     return updatedOrder;
   }
 
+  /**
+   * Annuler une commande avec remboursement Stripe si payée
+   */
+  async cancelOrder(orderId: string, userId: string, reason?: string): Promise<Order> {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: true,
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw createError.notFound('Order not found');
+    }
+
+    // Vérifier la propriété
+    if (order.userId !== userId) {
+      throw createError.forbidden('You can only cancel your own orders');
+    }
+
+    // Vérifier si la commande peut être annulée
+    if (order.status === 'CANCELLED' || order.status === 'REFUNDED') {
+      throw createError.badRequest('Order is already cancelled or refunded');
+    }
+
+    // Si la commande est payée, effectuer un remboursement Stripe
+    if (order.status === 'PAID' && order.stripePaymentId) {
+      try {
+        // Créer un remboursement Stripe
+        const refund = await stripe.refunds.create({
+          payment_intent: order.stripePaymentId,
+          reason: 'requested_by_customer',
+          metadata: {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            userId: userId,
+            cancelReason: reason || 'Customer request',
+          },
+        });
+
+        // Créer une transaction de remboursement
+        await prisma.transaction.create({
+          data: {
+            stripePaymentId: refund.id,
+            amount: order.totalAmount,
+            currency: 'eur',
+            status: 'COMPLETED',
+            type: 'REFUND',
+            description: `Refund for order ${order.orderNumber}`,
+            userId: userId,
+            orderId: orderId,
+            metadata: {
+              refundId: refund.id,
+              reason: reason || 'Customer request',
+              refundedAt: new Date().toISOString(),
+            },
+          },
+        });
+
+        // Mettre à jour le statut de la commande
+        const updatedOrder = await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'REFUNDED',
+            cancelReason: reason,
+          },
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
+        });
+
+        return updatedOrder;
+      } catch (error: any) {
+        throw createError.badRequest(`Refund failed: ${error.message}`);
+      }
+    }
+
+    // Si la commande n'est pas encore payée, simplement l'annuler
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'CANCELLED',
+        cancelReason: reason,
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return updatedOrder;
+  }
+
   async getOrders(userId: string, role: string): Promise<Order[]> {
-    const where: Prisma.OrderWhereInput = role === 'ADMIN' ? {} : { userId };
+    const where: Prisma.OrderWhereInput = role === 'ADMIN' ? { deletedAt: null } : { userId, deletedAt: null };
 
     return prisma.order.findMany({
       where,

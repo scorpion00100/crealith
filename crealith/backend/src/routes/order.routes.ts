@@ -1,6 +1,7 @@
 import express from 'express';
 import { orderController } from '../controllers/order.controller';
 import { requireAuth } from '../middleware/auth.middleware';
+import { validate, cancelOrderSchema } from '../utils/validation';
 
 const router = express.Router();
 
@@ -22,7 +23,10 @@ router.post('/confirm', orderController.confirmOrder);
 // Mettre à jour le statut d'une commande
 router.patch('/:orderId/status', orderController.updateOrderStatus);
 
-// Annuler une commande
+// Annuler une commande (DELETE pour REST convention)
 router.delete('/:orderId', orderController.cancelOrder);
+
+// Annuler une commande avec raison (POST pour body + validation)
+router.post('/:id/cancel', validate(cancelOrderSchema), orderController.cancelOrder);
 
 export default router;

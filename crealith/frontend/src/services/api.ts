@@ -3,9 +3,16 @@ import { store } from '@/store';
 import { setLoading } from '@/store/slices/uiSlice';
 import { authService } from './auth.service';
 import { retryWithBackoff, retryWithAuthRefresh, defaultRetryCondition } from '@/utils/retry-utils';
+import { logger } from '@/utils/logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+/**
+ * Service HTTP centralisé basé sur Axios.
+ * - Ajoute automatiquement le token d'auth
+ * - Gère un indicateur de chargement global
+ * - Gère le refresh token et un retry exponentiel configurable
+ */
 class ApiService {
   private api: AxiosInstance;
   private isRefreshing = false;
@@ -111,28 +118,28 @@ class ApiService {
               if (newToken) {
                 originalRequest.headers = originalRequest.headers || {};
                 originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                return this.api(originalRequest);
-              } else {
-                throw new Error('No new token received');
-              }
-            } catch (refreshError) {
-              console.warn('Token refresh failed:', refreshError);
-              // Échec du refresh: déconnexion propre
-              authService.logout();
-              // Ne pas rediriger automatiquement, laisser l'utilisateur gérer
-              return Promise.reject(error);
+              return this.api(originalRequest);
+            } else {
+              throw new Error('No new token received');
             }
+          } catch (refreshError) {
+            logger.warn('Token refresh failed:', refreshError);
+            // Échec du refresh: déconnexion propre
+            authService.logout();
+            // Ne pas rediriger automatiquement, laisser l'utilisateur gérer
+            return Promise.reject(error);
           }
-        } else if (response?.status === 403) {
-          // Accès refusé
-          console.warn('Access denied:', response.data?.message || 'Insufficient permissions');
-        } else if (response?.status === 429) {
-          // Rate limit atteint
-          console.warn('Rate limit exceeded:', response.data?.message || 'Too many requests');
-        } else if (response?.status >= 500) {
-          // Erreur serveur
-          console.error('Server error:', response.data?.message || 'Internal server error');
         }
+      } else if (response?.status === 403) {
+        // Accès refusé
+        logger.warn('Access denied:', response.data?.message || 'Insufficient permissions');
+      } else if (response?.status === 429) {
+        // Rate limit atteint
+        logger.warn('Rate limit exceeded:', response.data?.message || 'Too many requests');
+      } else if (response?.status >= 500) {
+        // Erreur serveur
+        logger.error('Server error:', response.data?.message || 'Internal server error');
+      }
         
         return Promise.reject(error);
       }
@@ -193,7 +200,7 @@ class ApiService {
         baseDelay: 1000,
         retryCondition: defaultRetryCondition,
         onRetry: (attempt, error) => {
-          console.warn(`API GET retry attempt ${attempt} for ${url}:`, error.message);
+          logger.warn(`API GET retry attempt ${attempt} for ${url}:`, error.message);
         },
       });
       
@@ -217,7 +224,7 @@ class ApiService {
         baseDelay: 1000,
         retryCondition: defaultRetryCondition,
         onRetry: (attempt, error) => {
-          console.warn(`API POST retry attempt ${attempt} for ${url}:`, error.message);
+          logger.warn(`API POST retry attempt ${attempt} for ${url}:`, error.message);
         },
       });
       
@@ -240,7 +247,7 @@ class ApiService {
         baseDelay: 1000,
         retryCondition: defaultRetryCondition,
         onRetry: (attempt, error) => {
-          console.warn(`API PUT retry attempt ${attempt} for ${url}:`, error.message);
+          logger.warn(`API PUT retry attempt ${attempt} for ${url}:`, error.message);
         },
       });
       
@@ -263,7 +270,7 @@ class ApiService {
         baseDelay: 1000,
         retryCondition: defaultRetryCondition,
         onRetry: (attempt, error) => {
-          console.warn(`API DELETE retry attempt ${attempt} for ${url}:`, error.message);
+          logger.warn(`API DELETE retry attempt ${attempt} for ${url}:`, error.message);
         },
       });
       
@@ -293,7 +300,7 @@ class ApiService {
           return !error.response || error.response.status >= 500;
         },
         onRetry: (attempt, error) => {
-          console.warn(`API UPLOAD retry attempt ${attempt} for ${url}:`, error.message);
+          logger.warn(`API UPLOAD retry attempt ${attempt} for ${url}:`, error.message);
         },
       });
       
@@ -319,7 +326,7 @@ class ApiService {
         maxRetries: 1,
         baseDelay: 1000,
         onRetry: (attempt, error) => {
-          console.warn(`API authenticated retry attempt ${attempt}:`, error.message);
+          logger.warn(`API authenticated retry attempt ${attempt}:`, error.message);
         },
       }
     );

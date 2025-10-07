@@ -7,8 +7,6 @@ import { emailService } from './email.service';
 import crypto from 'crypto';
 
 export class AuthService {
-  // Stockage mémoire uniquement pour l'environnement de test
-  private static testUsers: Map<string, { id: string; email: string; passwordHash: string; firstName: string; lastName: string; role: string; emailVerified: boolean } > = new Map();
   async register(data: { email: string; password: string; firstName: string; lastName: string; role?: 'BUYER' | 'SELLER' }) {
     // Normaliser l'email pour éviter les doublons Gmail
     const normalizeEmail = (email: string): string => {
@@ -22,15 +20,6 @@ export class AuthService {
     };
 
     const normalizedEmail = normalizeEmail(data.email);
-
-    // En test: bloquer les doublons via le cache mémoire
-    if (process.env.NODE_ENV === 'test') {
-      const key1 = data.email.toLowerCase();
-      const key2 = normalizedEmail.toLowerCase();
-      if (AuthService.testUsers.has(key1) || AuthService.testUsers.has(key2)) {
-        throw createError.conflict('User already exists');
-      }
-    }
 
     // Vérifier l'existence par email exact ou normalisé (Gmail)
     const candidateEmails = Array.from(new Set([data.email.toLowerCase(), normalizedEmail]));
@@ -85,29 +74,7 @@ export class AuthService {
       // Ne pas faire échouer l'inscription si l'email ne peut pas être envoyé
     }
 
-    // En test: garder une copie mémoire pour le login ultérieur si la DB de test n'est pas persistée
-    if (process.env.NODE_ENV === 'test') {
-      AuthService.testUsers.set(user.email.toLowerCase(), {
-        id: user.id,
-        email: user.email,
-        passwordHash,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        emailVerified: true
-      });
-      AuthService.testUsers.set(normalizedEmail.toLowerCase(), {
-        id: user.id,
-        email: user.email,
-        passwordHash,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        emailVerified: true
-      });
-    }
-
-    // Émettre aussi des tokens (les tests attendent access/refresh à l'inscription)
+    // Émettre aussi des tokens
     const accessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
     const refreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
     await redisService.storeRefreshToken(refreshToken, user.id);
@@ -203,7 +170,7 @@ export class AuthService {
   }
   async login(data: { email: string; password: string }) {
     // Vérifier si le compte est temporairement verrouillé
-    const isLocked = process.env.NODE_ENV === 'test' ? false : await redisService.isLoginLocked(data.email);
+    const isLocked = await redisService.isLoginLocked(data.email);
     if (isLocked) {
       throw createError.unauthorized('Too many failed attempts. Please try again later.');
     }
@@ -217,52 +184,23 @@ export class AuthService {
       }
       return `${local}@${domain}`;
     };
-    const candidates = Array.from(new Set([data.email.toLowerCase(), normalizeEmail(data.email)]));
-    let user = await prisma.user.findFirst({ where: { isActive: true, email: { in: candidates } } });
     
-    // SÉCURITÉ : Fallback mémoire UNIQUEMENT en mode test strict
-    // et SEULEMENT si l'utilisateur n'existe vraiment pas en base
-    if (!user && process.env.NODE_ENV === 'test' && process.env.STRICT_TEST_MODE === 'true') {
-      const tUser = AuthService.testUsers.get(candidates[0]) || AuthService.testUsers.get(candidates[1]);
-      if (tUser) {
-        user = {
-          id: tUser.id,
-          email: tUser.email,
-          firstName: tUser.firstName,
-          lastName: tUser.lastName,
-          role: tUser.role as any,
-          emailVerified: true,
-          passwordHash: tUser.passwordHash,
-          createdAt: new Date(),
-        } as any;
-      }
-    }
-    let valid = user ? await comparePassword(data.password, (user as any).passwordHash) : false;
-    // En environnement de test, si l'utilisateur existe mais l'hash ne correspond pas (incohérence DB),
-    // tenter la comparaison via le cache mémoire de test
-    if (!valid && process.env.NODE_ENV === 'test') {
-      const tUser = AuthService.testUsers.get(candidates[0]) || AuthService.testUsers.get(candidates[1]);
-      if (tUser) {
-        valid = await comparePassword(data.password, tUser.passwordHash);
-        if (valid && !user) {
-          user = {
-            id: tUser.id,
-            email: tUser.email,
-            firstName: tUser.firstName,
-            lastName: tUser.lastName,
-            role: tUser.role as any,
-            emailVerified: true,
-            passwordHash: tUser.passwordHash,
-            createdAt: new Date(),
-          } as any;
-        }
-      }
-    }
+    const candidates = Array.from(new Set([data.email.toLowerCase(), normalizeEmail(data.email)]));
+    const user = await prisma.user.findFirst({ 
+      where: { 
+        isActive: true, 
+        deletedAt: null, // ✅ Exclure utilisateurs supprimés
+        email: { in: candidates } 
+      } 
+    });
+    
+    const valid = user ? await comparePassword(data.password, (user as any).passwordHash) : false;
+    
     if (!valid) {
       // Incrémenter les échecs et éventuellement verrouiller
-      if (process.env.NODE_ENV !== 'test') {
-        try { await redisService.registerLoginFailure(data.email); } catch {}
-      }
+      try { 
+        await redisService.registerLoginFailure(data.email); 
+      } catch {}
       throw createError.unauthorized('Invalid credentials');
     }
 
@@ -285,9 +223,9 @@ export class AuthService {
     await redisService.storeRefreshToken(refreshToken, user.id);
 
     // Réinitialiser le compteur d'échecs de connexion
-    if (process.env.NODE_ENV !== 'test') {
-      try { await redisService.resetLoginFailures(data.email); } catch {}
-    }
+    try { 
+      await redisService.resetLoginFailures(data.email); 
+    } catch {}
 
     const { passwordHash, ...userWithoutPassword } = user as any;
     return { 
@@ -303,22 +241,24 @@ export class AuthService {
       // Vérifier le refresh token
       const payload = verifyRefreshToken(refreshToken);
       
-      // SÉCURITÉ : Toujours vérifier le token en Redis (sauf en test strict)
-      let tokenData: any = null;
-      if (process.env.NODE_ENV !== 'test' || process.env.STRICT_TEST_MODE !== 'true') {
-        tokenData = await redisService.getRefreshToken(refreshToken);
-        if (!tokenData || tokenData.userId !== payload.userId) {
-          throw createError.unauthorized('Invalid refresh token');
-        }
-        const expiresAt = new Date(tokenData.expiresAt);
-        if (expiresAt <= new Date()) {
-          throw createError.unauthorized('Refresh token expired');
-        }
+      // Vérifier le token en Redis
+      const tokenData = await redisService.getRefreshToken(refreshToken);
+      if (!tokenData || tokenData.userId !== payload.userId) {
+        throw createError.unauthorized('Invalid refresh token');
+      }
+      
+      const expiresAt = new Date(tokenData.expiresAt);
+      if (expiresAt <= new Date()) {
+        throw createError.unauthorized('Refresh token expired');
       }
 
-      // SÉCURITÉ : Toujours vérifier que l'utilisateur existe en base et est actif
+      // Vérifier que l'utilisateur existe en base et est actif
       const user = await prisma.user.findFirst({
-        where: { id: payload.userId, isActive: true },
+        where: { 
+          id: payload.userId, 
+          isActive: true,
+          deletedAt: null // ✅ Exclure utilisateurs supprimés
+        },
         select: { id: true, email: true, firstName: true, lastName: true, role: true }
       });
 
@@ -330,13 +270,9 @@ export class AuthService {
       const newAccessToken = generateAccessToken({ userId: user.id, email: user.email, role: user.role });
       const newRefreshToken = generateRefreshToken({ userId: user.id, email: user.email, role: user.role });
 
-      // SÉCURITÉ : Toujours gérer les tokens Redis (sauf en test strict)
-      if (process.env.NODE_ENV !== 'test' || process.env.STRICT_TEST_MODE !== 'true') {
-        // Révoquer l'ancien refresh token
-        await redisService.revokeRefreshToken(refreshToken);
-        // Stocker le nouveau refresh token
-        await redisService.storeRefreshToken(newRefreshToken, user.id);
-      }
+      // Révoquer l'ancien refresh token et stocker le nouveau
+      await redisService.revokeRefreshToken(refreshToken);
+      await redisService.storeRefreshToken(newRefreshToken, user.id);
 
       return {
         accessToken: newAccessToken,
@@ -455,7 +391,7 @@ export class AuthService {
 
   async getUserProfile(userId: string) {
     const user = await prisma.user.findUnique({
-      where: { id: userId, isActive: true },
+      where: { id: userId },
       select: {
         id: true,
         email: true,
@@ -480,7 +416,8 @@ export class AuthService {
       }
     });
 
-    if (!user) {
+    // Retourner null si l'utilisateur est supprimé ou inactif
+    if (!user || user.deletedAt || !user.isActive) {
       throw createError.notFound('User not found');
     }
 
@@ -488,7 +425,9 @@ export class AuthService {
   }
 
   async updateUserProfile(userId: string, data: { firstName?: string; lastName?: string; avatar?: string | null; bio?: string | null }) {
-    const user = await prisma.user.findUnique({ where: { id: userId, isActive: true } });
+    const user = await prisma.user.findUnique({ 
+      where: { id: userId }
+    });
     if (!user) {
       throw createError.notFound('User not found');
     }

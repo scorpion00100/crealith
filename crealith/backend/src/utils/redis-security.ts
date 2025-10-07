@@ -113,10 +113,25 @@ export class RedisSecurityValidator {
    * Génère une configuration Redis sécurisée à partir des variables d'environnement
    */
   static createSecureConfig(): SecureRedisConfig {
+    // Nettoyer le mot de passe des guillemets éventuels
+    const rawPassword = process.env.REDIS_PASSWORD;
+    const cleanPassword = rawPassword ? rawPassword.trim().replace(/^["']|["']$/g, '') : undefined;
+    
+    // Debug en développement
+    if (process.env.NODE_ENV === 'development') {
+      SecureLogger.info('Redis config loaded from environment', {
+        host: process.env.REDIS_HOST,
+        port: process.env.REDIS_PORT,
+        hasPassword: !!cleanPassword,
+        passwordLength: cleanPassword?.length || 0,
+        passwordPreview: cleanPassword ? cleanPassword.substring(0, 10) + '...' : 'none'
+      });
+    }
+    
     const config = {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
+      password: cleanPassword,
       db: parseInt(process.env.REDIS_DB || '0'),
       maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES || '3'),
       connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT || '10000'),

@@ -15,6 +15,10 @@ declare global {
   }
 }
 
+/**
+ * Authentifie via header Authorization Bearer et attache `req.user`.
+ * Renvoie 401 si token manquant/invalide.
+ */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -32,6 +36,9 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
   }
 };
 
+/**
+ * Exige un rôle parmi la liste fournie. 401 si non connecté, 403 si rôle insuffisant.
+ */
 export const requireRole = (roles: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -47,6 +54,9 @@ export const requireRole = (roles: string[]) => {
 };
 
 // Middleware d'authentification optionnelle (ne lance pas d'erreur si pas de token)
+/**
+ * Auth optionnelle: remplit `req.user` si token valide, continue sinon.
+ */
 export const optionalAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
@@ -70,6 +80,9 @@ export const requireSeller = requireRole(['SELLER', 'ADMIN']);
 export const requireAdmin = requireRole(['ADMIN']);
 
 // Middleware pour vérifier la propriété (seul le propriétaire peut modifier)
+/**
+ * Vérifie la propriété d'une ressource (ou rôle ADMIN) selon `resourceType`.
+ */
 export const requireOwnership = (resourceType: 'product' | 'order' | 'review') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -135,6 +148,9 @@ export const requireOwnership = (resourceType: 'product' | 'order' | 'review') =
 };
 
 // Middleware pour vérifier que l'utilisateur a acheté le produit (pour les reviews)
+/**
+ * Vérifie qu'un utilisateur a acheté un produit avant d'autoriser une action (ex: review).
+ */
 export const requirePurchase = async (
   req: Request,
   res: Response,

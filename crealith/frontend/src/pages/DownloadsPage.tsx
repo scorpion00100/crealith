@@ -73,12 +73,12 @@ export const DownloadsPage: React.FC = () => {
 
     const handleDownload = async (productId: string) => {
         try {
-            console.log('Tentative de téléchargement pour le produit:', productId);
+            logger.log('Tentative de téléchargement pour le produit:', productId);
             const res = await downloadService.generateDownloadUrl(productId);
-            console.log('Réponse du service:', res);
+            logger.log('Réponse du service:', res);
 
             if (res?.url) {
-                console.log('Ouverture de l\'URL:', res.url);
+                logger.log('Ouverture de l\'URL:', res.url);
                 window.open(res.url, '_blank');
                 dispatch(addNotification({
                     type: 'success',
@@ -89,7 +89,7 @@ export const DownloadsPage: React.FC = () => {
                 throw new Error('URL de téléchargement non reçue');
             }
         } catch (e: any) {
-            console.error('Erreur de téléchargement:', e);
+            logger.error('Erreur de téléchargement:', e);
             dispatch(addNotification({
                 type: 'error',
                 message: e?.message || 'Téléchargement impossible',

@@ -2,18 +2,93 @@ import prisma from '../prisma';
 import { createError } from '../utils/errors';
 import { Product, Prisma } from '@prisma/client';
 import { redisService } from './redis.service';
+import ImageKit from 'imagekit';
+import { SecureLogger } from '../utils/secure-logger';
 
-// TODO: Implémenter l'upload ImageKit
+// Configuration ImageKit
+const imagekit = new ImageKit({
+  publicKey: process.env.IMAGEKIT_PUBLIC_KEY || '',
+  privateKey: process.env.IMAGEKIT_PRIVATE_KEY || '',
+  urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT || 'https://ik.imagekit.io/crealith',
+});
+
+/**
+ * Upload un fichier vers ImageKit CDN
+ * Fallback vers placeholder si ImageKit n'est pas configuré
+ */
 const uploadToImageKit = async (file: Express.Multer.File, folder: string) => {
-  // Simulation temporaire
-  return {
-    url: `https://via.placeholder.com/400x300?text=${folder}`,
-    fileId: 'temp-id',
-    fileName: file.originalname,
-    filePath: `/${folder}/${file.originalname}`,
-    fileType: file.mimetype,
-    fileSize: file.size,
-  };
+  // Vérifier si ImageKit est configuré
+  const isConfigured = process.env.IMAGEKIT_PUBLIC_KEY && 
+                       process.env.IMAGEKIT_PRIVATE_KEY && 
+                       process.env.IMAGEKIT_URL_ENDPOINT;
+
+  if (!isConfigured) {
+    SecureLogger.warn('ImageKit not configured, using placeholder', { folder });
+    return {
+      url: `https://via.placeholder.com/400x300?text=${folder}`,
+      fileId: 'placeholder-id',
+      fileName: file.originalname,
+      filePath: `/${folder}/${file.originalname}`,
+      fileType: file.mimetype,
+      fileSize: file.size,
+    };
+  }
+
+  try {
+    const result = await imagekit.upload({
+      file: file.buffer,
+      fileName: `${Date.now()}_${file.originalname}`,
+      folder: `/crealith/${folder}`,
+      tags: ['crealith', folder, 'product'],
+      useUniqueFileName: true,
+    });
+
+    SecureLogger.info('File uploaded to ImageKit', {
+      fileId: result.fileId,
+      folder,
+      size: file.size,
+    });
+
+    return {
+      url: result.url,
+      fileId: result.fileId,
+      fileName: result.name,
+      filePath: result.filePath,
+      fileType: file.mimetype,
+      fileSize: file.size,
+    };
+  } catch (error) {
+    SecureLogger.error('ImageKit upload failed, using fallback', error, { folder });
+    // Fallback vers placeholder en cas d'erreur
+    return {
+      url: `https://via.placeholder.com/400x300?text=${folder}`,
+      fileId: 'error-fallback',
+      fileName: file.originalname,
+      filePath: `/${folder}/${file.originalname}`,
+      fileType: file.mimetype,
+      fileSize: file.size,
+    };
+  }
+};
+
+/**
+ * Supprimer un fichier d'ImageKit
+ */
+const deleteFromImageKit = async (fileId: string): Promise<void> => {
+  const isConfigured = process.env.IMAGEKIT_PUBLIC_KEY && 
+                       process.env.IMAGEKIT_PRIVATE_KEY;
+
+  if (!isConfigured || fileId === 'placeholder-id' || fileId === 'error-fallback' || fileId === 'temp-id') {
+    return; // Pas besoin de supprimer les placeholders
+  }
+
+  try {
+    await imagekit.deleteFile(fileId);
+    SecureLogger.info('File deleted from ImageKit', { fileId });
+  } catch (error) {
+    SecureLogger.error('ImageKit delete failed (non-blocking)', error, { fileId });
+    // Ne pas bloquer si la suppression échoue
+  }
 };
 
 export interface CreateProductData {
@@ -140,6 +215,7 @@ export class ProductService {
     }
 
     const where: Prisma.ProductWhereInput = {
+      deletedAt: null, // ✅ Exclure les produits supprimés
       isActive: filters.isActive !== undefined ? filters.isActive : true,
       ...(filters.categoryId && { categoryId: filters.categoryId }),
       ...(filters.userId && { userId: filters.userId }),
@@ -210,8 +286,8 @@ export class ProductService {
   }
 
   async getProductById(id: string): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { id, isActive: true },
+    const product = await prisma.product.findUnique({
+      where: { id },
       include: {
         user: {
           select: {
@@ -243,6 +319,13 @@ export class ProductService {
         },
       },
     });
+
+    // Retourner null si le produit est supprimé ou inactif
+    if (product && (product.deletedAt || !product.isActive)) {
+      return null;
+    }
+
+    return product;
   }
 
   async updateProduct(id: string, userId: string, data: UpdateProductData): Promise<Product> {
@@ -313,6 +396,9 @@ export class ProductService {
     return updated;
   }
 
+  /**
+   * Soft delete d'un produit (marque comme supprimé sans le supprimer de la DB)
+   */
   async deleteProduct(id: string, userId: string): Promise<void> {
     const product = await prisma.product.findUnique({
       where: { id },
@@ -326,17 +412,102 @@ export class ProductService {
       throw createError.forbidden('You can only delete your own products');
     }
 
-    await prisma.product.delete({
+    // Soft delete : marquer comme supprimé au lieu de supprimer
+    await prisma.product.update({
       where: { id },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: userId,
+        isActive: false, // Désactiver aussi pour double sécurité
+      },
     });
 
     // Invalider le cache des produits
     await redisService.cacheDelPattern('products:*');
+    await redisService.cacheDel(`product:${id}`);
+  }
+
+  /**
+   * Restaurer un produit soft-deleted
+   */
+  async restoreProduct(id: string, userId: string): Promise<Product> {
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      throw createError.notFound('Product not found');
+    }
+
+    if (product.userId !== userId) {
+      throw createError.forbidden('You can only restore your own products');
+    }
+
+    if (!product.deletedAt) {
+      throw createError.badRequest('Product is not deleted');
+    }
+
+    const restored = await prisma.product.update({
+      where: { id },
+      data: {
+        deletedAt: null,
+        deletedBy: null,
+        isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatar: true,
+          },
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+    });
+
+    // Invalider le cache
+    await redisService.cacheDelPattern('products:*');
+
+    return restored;
+  }
+
+  /**
+   * Hard delete permanent (admin seulement)
+   */
+  async hardDeleteProduct(id: string): Promise<void> {
+    const product = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!product) {
+      throw createError.notFound('Product not found');
+    }
+
+    // Suppression définitive de la base de données
+    await prisma.product.delete({
+      where: { id },
+    });
+
+    // Invalider le cache
+    await redisService.cacheDelPattern('products:*');
+    await redisService.cacheDel(`product:${id}`);
   }
 
   async getProductsByUser(userId: string): Promise<Product[]> {
     return prisma.product.findMany({
-      where: { userId, isActive: true },
+      where: { 
+        userId, 
+        isActive: true,
+        deletedAt: null // ✅ Exclure les produits supprimés
+      },
       include: {
         category: {
           select: {

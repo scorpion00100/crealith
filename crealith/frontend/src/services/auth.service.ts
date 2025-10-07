@@ -1,7 +1,14 @@
 import { apiService } from './api';
 import { AuthResponse, LoginForm, RegisterForm, User } from '@/types';
 
+/**
+ * Service d'authentification front:
+ * - login/register + stockage tokens
+ * - refresh, getProfile, updateProfile, changePassword
+ * - helpers isAuthenticated/getToken/getCurrentUser
+ */
 class AuthServiceClass {
+  /** Inscription utilisateur (BUYER/SELLER). */
   async register(data: RegisterForm): Promise<AuthResponse> {
     try {
       const resp = await apiService.post<any>('/auth/register', {
@@ -28,6 +35,7 @@ class AuthServiceClass {
     }
   }
 
+  /** Connexion utilisateur. */
   async login(data: LoginForm): Promise<AuthResponse> {
     const resp = await apiService.post<any>('/auth/login', {
       email: data.email,
@@ -42,6 +50,7 @@ class AuthServiceClass {
     return payload as AuthResponse;
   }
 
+  /** Rafraîchit le token d'accès à partir du refresh token. */
   async refresh(): Promise<void> {
     // Utilisé par les interceptors si besoin côté appel direct
     const csrf = document.cookie.split('; ').find(c => c.startsWith('csrfToken='))?.split('=')[1];
@@ -63,6 +72,7 @@ class AuthServiceClass {
     if (newRefreshToken) localStorage.setItem('crealith_refresh', newRefreshToken);
   }
 
+  /** Récupère le profil courant. */
   async getProfile(): Promise<User> {
     const resp = await apiService.get<any>('/auth/profile');
     if (resp?.data?.user) return resp.data.user as User;
@@ -70,6 +80,7 @@ class AuthServiceClass {
     return resp as User;
   }
 
+  /** Met à jour le profil utilisateur. */
   async updateProfile(data: { firstName?: string; lastName?: string; avatar?: string | null; bio?: string | null }): Promise<User> {
     const resp = await apiService.put<any>('/auth/profile', data);
     const user = resp?.data?.data?.user || resp?.data?.user || resp?.user || resp;
@@ -77,22 +88,26 @@ class AuthServiceClass {
     return user as User;
   }
 
+  /** Change le mot de passe. */
   async changePassword(data: { currentPassword: string; newPassword: string }): Promise<void> {
     const resp = await apiService.post<any>('/auth/change-password', data);
     return resp;
   }
 
+  /** Déconnecte l'utilisateur et nettoie le stockage. */
   logout(): void {
     localStorage.removeItem('crealith_user');
     localStorage.removeItem('crealith_token');
   }
 
+  /** Indique si un utilisateur est connecté (token valide + user). */
   isAuthenticated(): boolean {
     const token = this.getToken();
     const user = this.getCurrentUser();
     return !!(token && user);
   }
 
+  /** Renvoie l'utilisateur courant depuis localStorage. */
   getCurrentUser(): User | null {
     try {
       const userStr = localStorage.getItem('crealith_user');
@@ -102,6 +117,7 @@ class AuthServiceClass {
     }
   }
 
+  /** Renvoie le token s'il est valide, sinon nettoie et renvoie null. */
   getToken(): string | null {
     const token = localStorage.getItem('crealith_token');
     if (!token) return null;
@@ -126,6 +142,7 @@ class AuthServiceClass {
     }
   }
 
+  /** Met à jour partiellement l'utilisateur stocké. */
   updateUser(userData: Partial<User>): void {
     const currentUser = this.getCurrentUser();
     if (currentUser) {

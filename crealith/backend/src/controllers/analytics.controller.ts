@@ -1,10 +1,30 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { AnalyticsService } from '../services/analytics.service';
+
+const analyticsService = new AnalyticsService();
 
 export const analyticsController = {
   // Analytics pour les vendeurs
-  async getSellerAnalytics(req: Request, res: Response) {
+  async getSellerAnalytics(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Remplacer par de vraies requêtes Prisma
+      const user = req.user as any;
+      const { startDate, endDate } = req.query;
+      
+      const stats = await analyticsService.getSellerStats(
+        user.userId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Analytics pour les acheteurs - Gardé avec mockData pour compatibilité
+  async getBuyerAnalytics_LEGACY(req: Request, res: Response) {
+    try {
       const mockData = {
         revenue: {
           total: 2847.23,
@@ -69,52 +89,31 @@ export const analyticsController = {
   },
 
   // Analytics pour les acheteurs
-  async getBuyerAnalytics(req: Request, res: Response) {
+  async getBuyerAnalytics(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Remplacer par de vraies requêtes Prisma
-      const mockData = {
-        totalOrders: 12,
-        totalSpent: 456.78,
-        averageOrderValue: 38.07,
-        favoriteCategories: ['Templates', 'Graphiques', 'E-books'],
-        recentPurchases: [
-          { productId: '1', title: 'Template WordPress Premium', purchasedAt: '2024-06-15' },
-          { productId: '2', title: 'Pack Icônes Vectorielles', purchasedAt: '2024-06-10' }
-        ]
-      };
-
-      res.json(mockData);
+      const user = req.user as any;
+      
+      const stats = await analyticsService.getBuyerStats(user.userId);
+      
+      res.json({ success: true, data: stats });
     } catch (error) {
-      console.error('Erreur analytics acheteur:', error);
-      res.status(500).json({ message: 'Erreur lors du chargement des analytics' });
+      next(error);
     }
   },
 
   // Analytics globales (admin)
-  async getGlobalAnalytics(req: Request, res: Response) {
+  async getGlobalAnalytics(req: Request, res: Response, next: NextFunction) {
     try {
-      // TODO: Remplacer par de vraies requêtes Prisma
-      const mockData = {
-        totalRevenue: 15420.50,
-        totalSales: 423,
-        totalUsers: 156,
-        totalProducts: 89,
-        topSellers: [
-          { sellerId: '1', name: 'Design Studio Pro', revenue: 2847.23 },
-          { sellerId: '2', name: 'Code Masters', revenue: 2156.78 },
-          { sellerId: '3', name: 'Digital Assets Co', revenue: 1890.45 }
-        ],
-        popularCategories: [
-          { name: 'Templates', sales: 156 },
-          { name: 'Graphiques', sales: 98 },
-          { name: 'E-books', sales: 67 }
-        ]
-      };
-
-      res.json(mockData);
+      const { startDate, endDate } = req.query;
+      
+      const stats = await analyticsService.getAdminStats(
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json({ success: true, data: stats });
     } catch (error) {
-      console.error('Erreur analytics globales:', error);
-      res.status(500).json({ message: 'Erreur lors du chargement des analytics' });
+      next(error);
     }
   }
 };

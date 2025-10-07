@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { logger } from '@/utils/logger';
 import { Eye, EyeOff, AlertCircle, Copy, Check } from 'lucide-react';
 
 export const DeveloperTestInfo: React.FC = () => {
@@ -17,7 +18,7 @@ export const DeveloperTestInfo: React.FC = () => {
             setCopied(type);
             setTimeout(() => setCopied(null), 2000);
         } catch (err) {
-            console.error('Failed to copy: ', err);
+            logger.error('Failed to copy: ', err);
         }
     };
 

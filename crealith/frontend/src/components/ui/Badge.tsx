@@ -7,7 +7,7 @@ interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
     children: React.ReactNode;
 }
 
-export const Badge: React.FC<BadgeProps> = ({
+export const Badge = React.memo<BadgeProps>(({
     variant = 'primary',
     size = 'md',
     className,
@@ -46,10 +46,10 @@ export const Badge: React.FC<BadgeProps> = ({
             {children}
         </span>
     );
-};
+});
 
 // Composants spécialisés pour les statuts
-export const StatusBadge: React.FC<BadgeProps & { status?: string }> = ({
+export const StatusBadge = React.memo<BadgeProps & { status?: string }>(({
     status,
     variant,
     children,
@@ -79,4 +79,4 @@ export const StatusBadge: React.FC<BadgeProps & { status?: string }> = ({
             {children || status}
         </Badge>
     );
-};
+});

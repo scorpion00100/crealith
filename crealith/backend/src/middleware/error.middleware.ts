@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
+/**
+ * Middleware global de gestion d'erreurs.
+ * Normalise le format JSON de réponse et journalise via `logger`.
+ */
 export const errorHandler = (error: Error | AppError, req: Request, res: Response, next: NextFunction) => {
   let statusCode = 500;
   let message = 'Internal server error';

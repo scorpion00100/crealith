@@ -4,24 +4,47 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: crealith-postgres
+    env_file:
+      - .env.docker
     environment:
-      POSTGRES_DB: crealith_dev
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: ${POSTGRES_DB:-crealith_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "55432:5432"
+      - "${POSTGRES_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - crealith-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-crealith_dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     container_name: crealith-redis
+    env_file:
+      - .env.docker
+    # ⚠️  MODE DEV : Redis sans password pour éviter les problèmes NOAUTH
+    # TODO: Réactiver en production avec password sécurisé
+    command: redis-server
+    # command: sh -c 'redis-server --requirepass "$$REDIS_PASSWORD"'
     ports:
-      - "6380:6379"
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
     networks:
       - crealith-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      # test: ["CMD", "sh", "-c", "redis-cli -a $$REDIS_PASSWORD ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   crealith-network:
@@ -29,3 +52,4 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:

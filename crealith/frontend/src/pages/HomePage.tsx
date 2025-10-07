@@ -1,12 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ProductCard } from '@/components/ui/ProductCard';
 import { Product } from '@/types';
 import { useAppSelector, useAppDispatch } from '@/store';
-import { addToCartAsync } from '@/store/slices/cartSlice';
-import { addNotification } from '@/store/slices/uiSlice';
-import { addFavoriteAsync } from '@/store/slices/favoritesSlice';
 import { useAuth } from '@/hooks/useAuth';
+import { fetchProducts } from '@/store/slices/productSlice';
+import { SEO } from '@/components/SEO';
 import '../styles/pages/home.css';
 import {
   ArrowRight,
@@ -14,29 +13,35 @@ import {
   Users,
   Download,
   TrendingUp,
-  Palette,
   Award,
-  Play,
   Zap,
   Shield,
   Globe,
   ChevronRight,
-  Heart,
   Sparkles,
   ShoppingBag,
   Eye,
-  Clock,
   CheckCircle
 } from 'lucide-react';
 
+/**
+ * Page d'accueil (landing) présentant la proposition de valeur et
+ * un aperçu de produits vedettes. Contient des handlers pour
+ * navigation, ajout panier et favoris.
+ */
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const { isAuthenticated } = useAuth();
-  const { items: products } = useAppSelector(state => state.products);
+  const { items: products, isLoading } = useAppSelector(state => state.products);
 
-  // Mock data pour les produits populaires
-  const featuredProducts: Product[] = [
+  // Charger les produits featured depuis le backend
+  useEffect(() => {
+    dispatch(fetchProducts({ isFeatured: true, limit: 6 }));
+  }, [dispatch]);
+
+  // Utiliser les vrais produits depuis le store (ou fallback mock si vide)
+  const mockFeaturedProducts: Product[] = [
     {
       id: '1',
       title: 'Template Dashboard Admin Premium',
@@ -88,67 +93,21 @@ export const HomePage: React.FC = () => {
     }
   ];
 
-  // Handlers pour les actions produits
+  // Handlers
+  /** Navigue vers la page produit détaillée. */
   const handleViewProduct = (productId: string) => {
     navigate(`/product/${productId}`);
   };
 
-  const handleAddToCart = async (productId: string) => {
-    if (!isAuthenticated) {
-      dispatch(addNotification({
-        type: 'warning',
-        message: 'Connectez-vous pour ajouter au panier',
-        duration: 4000
-      }));
-      navigate('/login?redirect=/');
-      return;
-    }
-
-    try {
-      await dispatch(addToCartAsync({ productId, quantity: 1 })).unwrap();
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Produit ajouté au panier !',
-        duration: 3000
-      }));
-    } catch (error) {
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Erreur lors de l\'ajout au panier',
-        duration: 4000
-      }));
-    }
-  };
-
-  const handleToggleFavorite = async (productId: string) => {
-    if (!isAuthenticated) {
-      dispatch(addNotification({
-        type: 'warning',
-        message: 'Connectez-vous pour ajouter aux favoris',
-        duration: 4000
-      }));
-      navigate('/login?redirect=/');
-      return;
-    }
-
-    try {
-      await dispatch(addFavoriteAsync(productId)).unwrap();
-      dispatch(addNotification({
-        type: 'success',
-        message: 'Ajouté aux favoris !',
-        duration: 3000
-      }));
-    } catch (error) {
-      dispatch(addNotification({
-        type: 'error',
-        message: 'Erreur lors de l\'ajout aux favoris',
-        duration: 4000
-      }));
-    }
-  };
+  // Les actions d'ajout au panier et favoris ne sont pas utilisées sur la Home.
 
   return (
     <div className="min-h-screen text-gray-100">
+      <SEO
+        title="Accueil"
+        description="Découvrez, achetez et vendez des produits digitaux créatifs de qualité sur Crealith. Templates, UI Kits, illustrations et plus encore."
+        keywords={['marketplace', 'produits digitaux', 'templates', 'ui kits', 'créatif', 'design']}
+      />
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
         {/* Background Effects */}
@@ -184,19 +143,7 @@ export const HomePage: React.FC = () => {
               Rejoignez une communauté de plus de <span className="font-bold text-secondary-400">5,000 créateurs passionnés</span>.
             </p>
 
-            {/* Video Preview */}
-            <div className="mb-12">
-              <div className="relative inline-block group">
-                <div className="w-80 h-48 bg-gradient-to-br from-gray-800 to-gray-700 rounded-3xl overflow-hidden shadow-large border border-gray-600">
-                  <div className="w-full h-full bg-gradient-to-br from-primary-500/20 to-secondary-500/20 flex items-center justify-center">
-                    <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-full flex items-center justify-center shadow-premium group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
-                      <Play className="w-10 h-10 text-white ml-1" />
-                    </div>
-                  </div>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-secondary-500/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              </div>
-            </div>
+            {/* Video Preview removed to simplify hero and tighten vertical space */}
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16">

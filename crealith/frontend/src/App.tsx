@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { HelmetProvider } from 'react-helmet-async';
 import { store } from '@/store';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Layout } from '@/components/layout/Layout';
@@ -11,7 +12,6 @@ import { PageErrorBoundary, ComponentErrorBoundary } from '@/components/ErrorBou
 import {
   ProtectedRoute,
   PublicRoute,
-  AdminRoute,
   SellerRoute,
   BuyerRoute,
   VerifiedEmailRoute
@@ -58,280 +58,282 @@ const SellerSettingsPage = lazy(() => import('@/pages/seller/SellerSettingsPage'
 const App: React.FC = () => {
   return (
     <PageErrorBoundary>
-      <Provider store={store}>
-        <Router>
-          <AuthProvider>
-            <Suspense fallback={<LoadingSpinner fullScreen text="Chargement de la page..." />}>
-              <GlobalLoadingOverlay />
-              <NotificationCenter />
-              <Routes>
-                {/* Pages avec Layout général (Header + Footer) */}
-                <Route path="/" element={
-                  <PublicRoute>
+      <HelmetProvider>
+        <Provider store={store}>
+          <Router>
+            <AuthProvider>
+              <Suspense fallback={<LoadingSpinner fullScreen text="Chargement de la page..." />}>
+                <GlobalLoadingOverlay />
+                <NotificationCenter />
+                <Routes>
+                  {/* Pages avec Layout général (Header + Footer) */}
+                  <Route path="/" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement de l'accueil..." />}>
+                          <ComponentErrorBoundary>
+                            <HomePage />
+                          </ComponentErrorBoundary>
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/catalog" element={
+                    <PublicRoute allowAuthenticated={true}>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement du catalogue..." />}>
+                          <ComponentErrorBoundary>
+                            <CatalogPage />
+                          </ComponentErrorBoundary>
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/product/:id" element={
                     <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement de l'accueil..." />}>
+                      <Suspense fallback={<LoadingSpinner text="Chargement du produit..." />}>
                         <ComponentErrorBoundary>
-                          <HomePage />
+                          <ProductDetailPage />
                         </ComponentErrorBoundary>
                       </Suspense>
                     </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/catalog" element={
-                  <PublicRoute allowAuthenticated={true}>
+                  } />
+
+                  <Route path="/auth/google/callback" element={
                     <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement du catalogue..." />}>
-                        <ComponentErrorBoundary>
-                          <CatalogPage />
-                        </ComponentErrorBoundary>
+                      <Suspense fallback={<LoadingSpinner text="Finalisation de la connexion Google..." />}>
+                        <GoogleCallbackPage />
                       </Suspense>
                     </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/product/:id" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement du produit..." />}>
-                      <ComponentErrorBoundary>
-                        <ProductDetailPage />
-                      </ComponentErrorBoundary>
+                  } />
+
+                  <Route path="/about" element={
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de la page À propos..." />}>
+                        <AboutPage />
+                      </Suspense>
+                    </Layout>
+                  } />
+                  <Route path="/contact" element={
+                    <Layout>
+                      <Suspense fallback={<LoadingSpinner text="Chargement de la page Contact..." />}>
+                        <ContactPage />
+                      </Suspense>
+                    </Layout>
+                  } />
+
+
+                  {/* Pages de dashboard (versions non protégées retirées) */}
+
+                  {/* Routes d'authentification avec protection */}
+                  <Route path="/login" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement de la connexion..." />}>
+                          <LoginPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/register" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement de l'inscription..." />}>
+                          <RegisterPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/forgot-password" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                          <ForgotPasswordPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/reset-password" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                          <ResetPasswordPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/reset-success" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                          <ResetSuccessPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/email-confirmation" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                          <EmailConfirmationPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/verify-email" element={
+                    <PublicRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
+                          <VerifyEmailPage />
+                        </Suspense>
+                      </Layout>
+                    </PublicRoute>
+                  } />
+
+                  {/* Routes protégées */}
+                  <Route path="/dashboard" element={
+                    <ProtectedRoute>
+                      <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard..." />}>
+                        <DashboardPage />
+                      </Suspense>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/seller-dashboard" element={
+                    <SellerRoute>
+                      <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard vendeur..." />}>
+                        <SellerDashboardPage />
+                      </Suspense>
+                    </SellerRoute>
+                  } />
+                  <Route path="/seller/product/:id" element={
+                    <SellerRoute>
+                      <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du produit..." />}>
+                        <SellerProductDetailPage />
+                      </Suspense>
+                    </SellerRoute>
+                  } />
+                  <Route path="/seller/profile" element={
+                    <SellerRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement du profil vendeur..." />}>
+                          <SellerProfilePage />
+                        </Suspense>
+                      </Layout>
+                    </SellerRoute>
+                  } />
+                  <Route path="/seller/settings" element={
+                    <SellerRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des paramètres vendeur..." />}>
+                          <SellerSettingsPage />
+                        </Suspense>
+                      </Layout>
+                    </SellerRoute>
+                  } />
+                  <Route path="/buyer-dashboard" element={
+                    <BuyerRoute>
+                      <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard acheteur..." />}>
+                        <BuyerDashboardPage />
+                      </Suspense>
+                    </BuyerRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement du profil..." />}>
+                          <ProfilePage />
+                        </Suspense>
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/settings" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des paramètres..." />}>
+                          <SettingsPage />
+                        </Suspense>
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+
+                  <Route path="/orders" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des commandes..." />}>
+                          <OrdersPage />
+                        </Suspense>
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/invoices" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des factures..." />}>
+                          <InvoicesPage />
+                        </Suspense>
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/my-reviews" element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement de vos avis..." />}>
+                          <MyReviewsPage />
+                        </Suspense>
+                      </Layout>
+                    </ProtectedRoute>
+                  } />
+
+                  {/* Routes nécessitant une vérification d'email */}
+                  <Route path="/cart" element={
+                    <VerifiedEmailRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement du panier..." />}>
+                          <CartPage />
+                        </Suspense>
+                      </Layout>
+                    </VerifiedEmailRoute>
+                  } />
+                  <Route path="/checkout" element={
+                    <VerifiedEmailRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement de la commande..." />}>
+                          <CheckoutPage />
+                        </Suspense>
+                      </Layout>
+                    </VerifiedEmailRoute>
+                  } />
+                  <Route path="/favorites" element={
+                    <VerifiedEmailRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des favoris..." />}>
+                          <FavoritesPage />
+                        </Suspense>
+                      </Layout>
+                    </VerifiedEmailRoute>
+                  } />
+                  <Route path="/downloads" element={
+                    <VerifiedEmailRoute>
+                      <Layout>
+                        <Suspense fallback={<LoadingSpinner text="Chargement des téléchargements..." />}>
+                          <DownloadsPage />
+                        </Suspense>
+                      </Layout>
+                    </VerifiedEmailRoute>
+                  } />
+
+                  {/* Page d'erreur */}
+                  <Route path="/unauthorized" element={
+                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
+                      <UnauthorizedPage />
                     </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/auth/google/callback" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Finalisation de la connexion Google..." />}>
-                      <GoogleCallbackPage />
-                    </Suspense>
-                  </Layout>
-                } />
-
-                <Route path="/about" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de la page À propos..." />}>
-                      <AboutPage />
-                    </Suspense>
-                  </Layout>
-                } />
-                <Route path="/contact" element={
-                  <Layout>
-                    <Suspense fallback={<LoadingSpinner text="Chargement de la page Contact..." />}>
-                      <ContactPage />
-                    </Suspense>
-                  </Layout>
-                } />
-
-
-                {/* Pages de dashboard (versions non protégées retirées) */}
-
-                {/* Routes d'authentification avec protection */}
-                <Route path="/login" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement de la connexion..." />}>
-                        <LoginPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/register" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement de l'inscription..." />}>
-                        <RegisterPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/forgot-password" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
-                        <ForgotPasswordPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/reset-password" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
-                        <ResetPasswordPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/reset-success" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
-                        <ResetSuccessPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/email-confirmation" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
-                        <EmailConfirmationPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-                <Route path="/verify-email" element={
-                  <PublicRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement..." />}>
-                        <VerifyEmailPage />
-                      </Suspense>
-                    </Layout>
-                  </PublicRoute>
-                } />
-
-                {/* Routes protégées */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard..." />}>
-                      <DashboardPage />
-                    </Suspense>
-                  </ProtectedRoute>
-                } />
-                <Route path="/seller-dashboard" element={
-                  <SellerRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard vendeur..." />}>
-                      <SellerDashboardPage />
-                    </Suspense>
-                  </SellerRoute>
-                } />
-                <Route path="/seller/product/:id" element={
-                  <SellerRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du produit..." />}>
-                      <SellerProductDetailPage />
-                    </Suspense>
-                  </SellerRoute>
-                } />
-                <Route path="/seller/profile" element={
-                  <SellerRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement du profil vendeur..." />}>
-                        <SellerProfilePage />
-                      </Suspense>
-                    </Layout>
-                  </SellerRoute>
-                } />
-                <Route path="/seller/settings" element={
-                  <SellerRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des paramètres vendeur..." />}>
-                        <SellerSettingsPage />
-                      </Suspense>
-                    </Layout>
-                  </SellerRoute>
-                } />
-                <Route path="/buyer-dashboard" element={
-                  <BuyerRoute>
-                    <Suspense fallback={<LoadingSpinner fullScreen text="Chargement du dashboard acheteur..." />}>
-                      <BuyerDashboardPage />
-                    </Suspense>
-                  </BuyerRoute>
-                } />
-                <Route path="/profile" element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement du profil..." />}>
-                        <ProfilePage />
-                      </Suspense>
-                    </Layout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/settings" element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des paramètres..." />}>
-                        <SettingsPage />
-                      </Suspense>
-                    </Layout>
-                  </ProtectedRoute>
-                } />
-
-                <Route path="/orders" element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des commandes..." />}>
-                        <OrdersPage />
-                      </Suspense>
-                    </Layout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/invoices" element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des factures..." />}>
-                        <InvoicesPage />
-                      </Suspense>
-                    </Layout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/my-reviews" element={
-                  <ProtectedRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement de vos avis..." />}>
-                        <MyReviewsPage />
-                      </Suspense>
-                    </Layout>
-                  </ProtectedRoute>
-                } />
-
-                {/* Routes nécessitant une vérification d'email */}
-                <Route path="/cart" element={
-                  <VerifiedEmailRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement du panier..." />}>
-                        <CartPage />
-                      </Suspense>
-                    </Layout>
-                  </VerifiedEmailRoute>
-                } />
-                <Route path="/checkout" element={
-                  <VerifiedEmailRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement de la commande..." />}>
-                        <CheckoutPage />
-                      </Suspense>
-                    </Layout>
-                  </VerifiedEmailRoute>
-                } />
-                <Route path="/favorites" element={
-                  <VerifiedEmailRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des favoris..." />}>
-                        <FavoritesPage />
-                      </Suspense>
-                    </Layout>
-                  </VerifiedEmailRoute>
-                } />
-                <Route path="/downloads" element={
-                  <VerifiedEmailRoute>
-                    <Layout>
-                      <Suspense fallback={<LoadingSpinner text="Chargement des téléchargements..." />}>
-                        <DownloadsPage />
-                      </Suspense>
-                    </Layout>
-                  </VerifiedEmailRoute>
-                } />
-
-                {/* Page d'erreur */}
-                <Route path="/unauthorized" element={
-                  <Suspense fallback={<LoadingSpinner fullScreen text="Chargement..." />}>
-                    <UnauthorizedPage />
-                  </Suspense>
-                } />
-              </Routes>
-            </Suspense>
-          </AuthProvider>
-        </Router>
-      </Provider>
+                  } />
+                </Routes>
+              </Suspense>
+            </AuthProvider>
+          </Router>
+        </Provider>
+      </HelmetProvider>
     </PageErrorBoundary>
   );
 };

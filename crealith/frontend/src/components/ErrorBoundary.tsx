@@ -1,4 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { logger } from '@/utils/logger';
+import { Sentry } from '@/config/sentry';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 
 interface Props {
@@ -42,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         // Log l'erreur
-        console.error('ErrorBoundary caught an error:', error, errorInfo);
+        logger.error('ErrorBoundary caught an error:', error, errorInfo);
 
         // Mettre à jour l'état avec les détails de l'erreur
         this.setState({
@@ -72,11 +74,18 @@ export class ErrorBoundary extends Component<Props, State> {
             url: window.location.href,
         };
 
-        // Pour l'instant, on log juste l'erreur
-        console.error('Error Report:', errorReport);
+        // Logger l'erreur
+        logger.error('Error Report:', errorReport);
 
-        // TODO: Implémenter l'envoi vers un service de monitoring
-        // sendErrorToMonitoring(errorReport);
+        // Envoyer vers Sentry en production
+        if (import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
+            Sentry.captureException(error, {
+                contexts: {
+                    react: errorInfo,
+                    errorReport
+                }
+            });
+        }
     };
 
     private handleRetry = () => {
@@ -194,7 +203,7 @@ export const PageErrorBoundary: React.FC<{ children: ReactNode }> = ({ children 
             showDetails={process.env.NODE_ENV === 'development'}
             onError={(error, errorInfo) => {
                 // Log supplémentaire pour les erreurs de page
-                console.error('Page Error:', error, errorInfo);
+                logger.error('Page Error:', error, errorInfo);
             }}
         >
             {children}
@@ -224,7 +233,7 @@ export const ComponentErrorBoundary: React.FC<{
         <ErrorBoundary
             fallback={fallback || defaultFallback}
             onError={(error, errorInfo) => {
-                console.error('Component Error:', error, errorInfo);
+                logger.error('Component Error:', error, errorInfo);
             }}
         >
             {children}

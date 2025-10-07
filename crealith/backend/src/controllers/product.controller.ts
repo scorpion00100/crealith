@@ -6,6 +6,10 @@ import { createError } from '../utils/errors';
 
 const productService = new ProductService();
 
+/**
+ * Crée un produit pour l'utilisateur authentifié.
+ * Gère les fichiers optionnels (file/thumbnail) et parse les champs numériques/JSON.
+ */
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const files = req.files as any;
@@ -35,6 +39,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+/**
+ * Liste paginée/triée des produits avec filtres (catégorie, prix, recherche, userId sécurisé).
+ */
 export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user as any;
@@ -77,6 +84,9 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+/**
+ * Récupère un produit par id, 404 si non trouvé.
+ */
 export const getProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const product = await productService.getProductById(req.params.id);
@@ -89,6 +99,10 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
   }
 };
 
+/**
+ * Met à jour un produit appartenant à l'utilisateur (ou admin).
+ * Supporte champs partiels et fichiers.
+ */
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const updateData: any = {};
@@ -121,6 +135,9 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+/**
+ * Supprime un produit (propriétaire ou admin).
+ */
 export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user as any;
@@ -131,6 +148,9 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+/**
+ * Récupère les produits de l'utilisateur courant.
+ */
 export const getUserProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user as any;
@@ -141,6 +161,10 @@ export const getUserProducts = async (req: Request, res: Response, next: NextFun
   }
 };
 
+/**
+ * Renvoie une URL de téléchargement si l'utilisateur a acheté le produit
+ * (ou s'il est propriétaire). Incrémente le compteur de téléchargements.
+ */
 export const downloadProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user as any;
@@ -159,6 +183,31 @@ export const downloadProduct = async (req: Request, res: Response, next: NextFun
     await productService.incrementDownloads(req.params.id);
 
     res.json({ success: true, data: { downloadUrl: product.fileUrl } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Restaurer un produit soft-deleted
+ */
+export const restoreProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user as any;
+    const product = await productService.restoreProduct(req.params.id, user.userId);
+    res.json({ success: true, data: product, message: 'Product restored successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Hard delete permanent d'un produit (admin seulement)
+ */
+export const hardDeleteProduct = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await productService.hardDeleteProduct(req.params.id);
+    res.json({ success: true, message: 'Product permanently deleted' });
   } catch (error) {
     next(error);
   }

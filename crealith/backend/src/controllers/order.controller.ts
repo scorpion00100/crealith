@@ -4,7 +4,7 @@ import { OrderService } from '../services/order.service';
 const orderService = new OrderService();
 
 export const orderController = {
-  // Récupérer les commandes de l'utilisateur
+  /** Récupérer les commandes de l'utilisateur (role-aware). */
   async getUserOrders(req: Request, res: Response) {
     try {
       const userId = req.user?.userId as string;
@@ -19,7 +19,7 @@ export const orderController = {
     }
   },
 
-  // Récupérer une commande spécifique
+  /** Récupérer une commande spécifique (placeholder/mock). */
   async getOrderById(req: Request, res: Response) {
     try {
       const { orderId } = req.params;
@@ -56,7 +56,7 @@ export const orderController = {
     }
   },
 
-  // Créer une nouvelle commande
+  /** Créer une commande ou confirmer un paiement existant (Stripe). */
   async createOrder(req: Request, res: Response) {
     try {
       const userId = req.user?.userId as string;
@@ -82,7 +82,7 @@ export const orderController = {
     }
   },
 
-  // Confirmer une commande après paiement Stripe
+  /** Confirmer une commande après paiement Stripe. */
   async confirmOrder(req: Request, res: Response) {
     try {
       const { orderId, paymentIntentId } = req.body as { orderId: string; paymentIntentId: string };
@@ -94,7 +94,7 @@ export const orderController = {
     }
   },
 
-  // Mettre à jour le statut d'une commande
+  /** Mettre à jour le statut d'une commande (placeholder/mock). */
   async updateOrderStatus(req: Request, res: Response) {
     try {
       const { orderId } = req.params;
@@ -114,17 +114,28 @@ export const orderController = {
     }
   },
 
-  // Annuler une commande
+  /** Annuler une commande avec remboursement Stripe si payée. */
   async cancelOrder(req: Request, res: Response) {
     try {
-      const { orderId } = req.params;
-      const userId = req.user?.userId;
+      const { id } = req.params;
+      const userId = req.user?.userId as string;
+      const { reason } = req.body;
 
-      // TODO: Implémenter la logique d'annulation avec remboursement Stripe
-      res.json({ message: 'Commande annulée avec succès' });
+      const order = await orderService.cancelOrder(id, userId, reason);
+      
+      res.json({ 
+        success: true, 
+        data: order,
+        message: order.status === 'REFUNDED' 
+          ? 'Order cancelled and refunded successfully' 
+          : 'Order cancelled successfully'
+      });
     } catch (error) {
       console.error('Erreur annulation commande:', error);
-      res.status(500).json({ message: 'Erreur lors de l\'annulation de la commande' });
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erreur lors de l\'annulation de la commande' 
+      });
     }
   }
 };

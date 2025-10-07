@@ -3,9 +3,11 @@ import { Request, Response, NextFunction } from 'express';
 import { createError } from './errors';
 
 /**
- * Middleware factory pour valider les requêtes avec Zod
- * @param schema - Le schéma Zod à utiliser pour la validation
- * @param target - Partie de la requête à valider ('body', 'query', 'params')
+ * Fabrique de middleware Express pour valider une partie de la requête avec un schéma Zod.
+ * Valide `req[target]` puis passe au middleware suivant, sinon remonte une erreur de validation normalisée.
+ * @param schema Le schéma Zod à utiliser pour la validation
+ * @param target Partie de la requête à valider: 'body' | 'query' | 'params'
+ * @returns Middleware Express de validation
  */
 export const validate = (
   schema: z.ZodSchema,
@@ -28,6 +30,10 @@ export const validate = (
 
 // ==================== Auth Schemas ====================
 
+/**
+ * Schéma d'inscription utilisateur.
+ * Contrainte sur email, mot de passe robuste et informations de profil de base.
+ */
 export const registerSchema = z.object({
   email: z.string()
     .email('Email invalide')
@@ -53,6 +59,9 @@ export const registerSchema = z.object({
   role: z.enum(['BUYER', 'SELLER']).optional().default('BUYER'),
 });
 
+/**
+ * Schéma de connexion: email + mot de passe minimal.
+ */
 export const loginSchema = z.object({
   email: z.string()
     .email('Email invalide')
@@ -62,6 +71,9 @@ export const loginSchema = z.object({
     .min(1, 'Mot de passe requis'),
 });
 
+/**
+ * Schéma demande de réinitialisation: email valide requis.
+ */
 export const forgotPasswordSchema = z.object({
   email: z.string()
     .email('Email invalide')
@@ -69,6 +81,9 @@ export const forgotPasswordSchema = z.object({
     .trim(),
 });
 
+/**
+ * Schéma de réinitialisation du mot de passe via token + nouveau mot de passe robuste.
+ */
 export const resetPasswordSchema = z.object({
   token: z.string()
     .min(1, 'Token requis'),
@@ -81,6 +96,9 @@ export const resetPasswordSchema = z.object({
     ),
 });
 
+/**
+ * Schéma de vérification d'email via token.
+ */
 export const verifyEmailSchema = z.object({
   token: z.string()
     .min(1, 'Token requis'),
@@ -88,6 +106,10 @@ export const verifyEmailSchema = z.object({
 
 // ==================== Product Schemas ====================
 
+/**
+ * Schéma de création de produit.
+ * Gère la validation stricte des textes, prix (2 décimales) et options de visibilité.
+ */
 export const createProductSchema = z.object({
   title: z.string()
     .min(3, 'Le titre doit contenir au moins 3 caractères')
@@ -123,8 +145,15 @@ export const createProductSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
+/**
+ * Schéma de mise à jour de produit (tous champs optionnels).
+ */
 export const updateProductSchema = createProductSchema.partial();
 
+/**
+ * Schéma de query produit pour pagination/tri/filtrage.
+ * Convertit les valeurs string en Number/boolean si nécessaire.
+ */
 export const productQuerySchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).optional(),
@@ -143,6 +172,9 @@ export const productQuerySchema = z.object({
 
 // ==================== Order Schemas ====================
 
+/**
+ * Schéma de création de commande: items (+quantité), et option de paiement.
+ */
 export const createOrderSchema = z.object({
   items: z.array(z.object({
     productId: z.string().min(1, 'ID de produit requis'),
@@ -151,12 +183,18 @@ export const createOrderSchema = z.object({
   paymentMethod: z.string().optional(),
 });
 
+/**
+ * Schéma de mise à jour du statut de commande.
+ */
 export const updateOrderStatusSchema = z.object({
   status: z.enum(['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED', 'REFUNDED']),
 });
 
 // ==================== Review Schemas ====================
 
+/**
+ * Schéma de création d'avis (note entière 1..5, commentaire optionnel).
+ */
 export const createReviewSchema = z.object({
   productId: z.string().min(1, 'ID de produit requis'),
   rating: z.number()
@@ -170,10 +208,16 @@ export const createReviewSchema = z.object({
     .optional(),
 });
 
+/**
+ * Schéma de mise à jour d'avis (sans productId, champs optionnels).
+ */
 export const updateReviewSchema = createReviewSchema.omit({ productId: true }).partial();
 
 // ==================== Search Schemas ====================
 
+/**
+ * Schéma de recherche: terme requis, filtres optionnels et pagination.
+ */
 export const searchQuerySchema = z.object({
   q: z.string()
     .min(1, 'Terme de recherche requis')
@@ -188,6 +232,9 @@ export const searchQuerySchema = z.object({
 
 // ==================== Cart Schemas ====================
 
+/**
+ * Schéma d'ajout au panier avec prétraitement de la quantité (string -> int) et valeur par défaut 1.
+ */
 export const addToCartSchema = z.object({
   productId: z.string().min(1, 'ID de produit requis'),
   quantity: z.preprocess(
@@ -203,6 +250,9 @@ export const addToCartSchema = z.object({
   ).default(1),
 });
 
+/**
+ * Schéma de mise à jour d'un item de panier (quantité entière >= 0).
+ */
 export const updateCartItemSchema = z.object({
   quantity: z.preprocess(
     (val) => {
@@ -218,6 +268,9 @@ export const updateCartItemSchema = z.object({
 
 // ==================== User Profile Schemas ====================
 
+/**
+ * Schéma de mise à jour de profil: noms, bio, avatar.
+ */
 export const updateProfileSchema = z.object({
   firstName: z.string()
     .min(2, 'Prénom trop court')
@@ -239,6 +292,9 @@ export const updateProfileSchema = z.object({
     .optional(),
 });
 
+/**
+ * Schéma de changement de mot de passe: actuel + nouveau robuste.
+ */
 export const changePasswordSchema = z.object({
   currentPassword: z.string()
     .min(1, 'Mot de passe actuel requis'),
@@ -253,11 +309,29 @@ export const changePasswordSchema = z.object({
 
 // ==================== ID Param Schemas ====================
 
+/**
+ * Schéma de paramètre d'ID générique.
+ */
 export const idParamSchema = z.object({
   id: z.string().min(1, 'ID requis'),
 });
 
+/**
+ * Schéma de paramètre `productId`.
+ */
 export const productIdParamSchema = z.object({
   productId: z.string().min(1, 'ID de produit requis'),
+});
+
+// ==================== Order Schemas ====================
+
+/**
+ * Schéma de validation pour l'annulation de commande
+ */
+export const cancelOrderSchema = z.object({
+  reason: z.string()
+    .min(3, 'Reason must be at least 3 characters')
+    .max(500, 'Reason must be at most 500 characters')
+    .optional(),
 });
 
