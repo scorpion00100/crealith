@@ -416,8 +416,8 @@ export class AuthService {
       }
     });
 
-    // Retourner null si l'utilisateur est supprimé ou inactif
-    if (!user || user.deletedAt || !user.isActive) {
+    // Retourner null si l'utilisateur est inactif ou non trouvé
+    if (!user || !user.isActive) {
       throw createError.notFound('User not found');
     }
 

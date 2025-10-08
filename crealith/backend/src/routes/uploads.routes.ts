@@ -50,6 +50,52 @@ router.post('/', authenticate, upload.single('file'), (req, res) => {
   return res.json({ success: true, data: { url, fileUrl: url, filename } });
 });
 
+// POST /api/uploads/avatar - Upload avatar de l'utilisateur
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadDir),
+  filename: (_req, file, cb) => {
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `avatar-${unique}${ext}`);
+  }
+});
+
+const avatarFilter: multer.Options['fileFilter'] = (_req, file, cb) => {
+  const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!allowed.includes(ext)) {
+    return cb(new Error('Invalid file type. Allowed: JPG, PNG, WEBP, GIF'));
+  }
+  cb(null, true);
+};
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max pour avatar
+  fileFilter: avatarFilter
+});
+
+router.post('/avatar', authenticate, uploadAvatar.single('avatar'), (req, res) => {
+  const filename = (req.file && req.file.filename) || '';
+  if (!filename) {
+    return res.status(400).json({ success: false, message: 'No avatar uploaded' });
+  }
+  
+  // En production, uploader vers ImageKit ou S3
+  // Pour l'instant, URL locale
+  const avatarUrl = `/files/${filename}`;
+  
+  return res.json({ 
+    success: true, 
+    data: { 
+      avatar: avatarUrl,
+      avatarUrl,
+      filename 
+    },
+    message: 'Avatar uploaded successfully'
+  });
+});
+
 export default router;
 
 

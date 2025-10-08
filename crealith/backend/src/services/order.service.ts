@@ -505,26 +505,71 @@ export class OrderService {
     });
   }
 
-  async cancelOrder(id: string, userId: string): Promise<Order> {
-    const order = await prisma.order.findUnique({
-      where: { id },
+  /**
+   * Génère les données de facture pour une commande
+   */
+  async getInvoice(orderId: string, userId: string) {
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId,
+        deletedAt: null,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                thumbnailUrl: true,
+              },
+            },
+          },
+        },
+        transactions: true,
+      },
     });
 
     if (!order) {
-      throw createError.notFound('Order not found');
+      throw createError.notFound('Order not found or you do not have permission to view this invoice');
     }
 
-    if (order.userId !== userId) {
-      throw createError.forbidden('You can only cancel your own orders');
-    }
+    // Calculer les totaux
+    const subtotal = order.items.reduce((sum, item) => sum + parseFloat(item.price.toString()), 0);
+    const platformFee = subtotal * 0.1; // 10%
+    const total = subtotal + platformFee;
 
-    if (order.status !== 'PENDING') {
-      throw createError.badRequest('Order cannot be cancelled');
-    }
-
-    return prisma.order.update({
-      where: { id },
-      data: { status: 'CANCELLED' },
-    });
+    return {
+      invoiceNumber: `INV-${order.orderNumber}`,
+      orderNumber: order.orderNumber,
+      orderDate: order.createdAt,
+      status: order.status,
+      customer: {
+        name: `${order.user.firstName} ${order.user.lastName}`,
+        email: order.user.email,
+      },
+      items: order.items.map((item) => ({
+        productTitle: item.product.title,
+        quantity: item.quantity,
+        unitPrice: parseFloat(item.price.toString()),
+        total: parseFloat(item.price.toString()) * item.quantity,
+      })),
+      subtotal,
+      platformFee,
+      total,
+      paymentMethod: order.paymentMethod || 'card',
+      paidAt: order.transactions.find((t) => t.type === 'PAYMENT')?.createdAt,
+      // TODO: Générer PDF avec pdfkit ou puppeteer pour version downloadable
+    };
   }
 }

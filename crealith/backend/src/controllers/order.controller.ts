@@ -137,5 +137,27 @@ export const orderController = {
         message: 'Erreur lors de l\'annulation de la commande' 
       });
     }
+  },
+
+  /** Télécharger la facture d'une commande. */
+  async downloadInvoice(req: Request, res: Response) {
+    try {
+      const { orderId } = req.params;
+      const userId = req.user?.userId as string;
+
+      const invoice = await orderService.getInvoice(orderId, userId);
+
+      res.json({
+        success: true,
+        data: invoice,
+        message: 'Invoice retrieved successfully'
+      });
+    } catch (error: any) {
+      console.error('Erreur téléchargement facture:', error);
+      res.status(error.statusCode || 500).json({
+        success: false,
+        message: error.message || 'Erreur lors du téléchargement de la facture'
+      });
+    }
   }
 };

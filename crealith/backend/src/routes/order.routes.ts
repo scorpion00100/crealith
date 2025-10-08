@@ -29,4 +29,7 @@ router.delete('/:orderId', orderController.cancelOrder);
 // Annuler une commande avec raison (POST pour body + validation)
 router.post('/:id/cancel', validate(cancelOrderSchema), orderController.cancelOrder);
 
+// Télécharger la facture (invoice) en PDF
+router.get('/:orderId/invoice', orderController.downloadInvoice);
+
 export default router;
