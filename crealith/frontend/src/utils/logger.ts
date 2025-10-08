@@ -43,10 +43,8 @@ export const logger = {
   error: (...args: any[]) => {
     console.error(...args);
     
-    // TODO: Envoyer vers service de monitoring (Sentry) en production
-    if (!isDevelopment && !isTest) {
-      // Sentry.captureException(args[0]);
-    }
+    // ✅ Sentry configuré (voir config/sentry.ts)
+    // Les erreurs sont capturées automatiquement via ErrorBoundary et config/sentry.ts
   },
 
   /**

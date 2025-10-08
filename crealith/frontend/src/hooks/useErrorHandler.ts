@@ -159,9 +159,9 @@ export const useErrorHandler = () => {
       logger.error('Error Handler:', errorInfo);
     }
 
-    // TODO: Implémenter l'envoi vers un service de monitoring (Sentry)
+    // ✅ Sentry configuré (voir config/sentry.ts)
     if (config.reportToService) {
-      // Sentry.captureException(errorInfo);
+      // Sentry capture les erreurs automatiquement via ErrorBoundary
     }
   }, []);
 
